@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UMBRA-09 — IRIS COMPANY</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  html, body { margin:0; padding:0; background:#040603; }
+  #root { min-height:100vh; }
+  .u09-mono { font-family: 'Share Tech Mono','Roboto Mono',monospace; }
+  .u09-input { background:#050c05; border:1px solid #235c2f; color:#7dffa0; border-radius:0; padding:6px 8px; font-family:inherit; font-size:13px; }
+  .u09-input:focus { outline:none; border-color:#3ddc6b; box-shadow:0 0 4px rgba(61,220,107,0.4); }
+  .u09-btn { background:#0d1f0d; border:1px solid #235c2f; color:#7dffa0; padding:6px 12px; border-radius:0; cursor:pointer; font-family:'Share Tech Mono',monospace; letter-spacing:0.08em; font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+  .u09-btn:hover { border-color:#3ddc6b; color:#c8ffd9; }
+  .u09-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .u09-stepper { width:22px; height:22px; display:flex; align-items:center; justify-content:center; background:#0a160a; border:1px solid #235c2f; color:#7dffa0; cursor:pointer; }
+  .u09-stepper:hover { border-color:#3ddc6b; color:#c8ffd9; }
+  .u09-card { background:rgba(8,18,8,0.7); border:1px solid #1a3a1a; padding:12px; }
+  .u09-tab { padding:10px 16px; cursor:pointer; letter-spacing:0.1em; font-size:12px; color:#2e7a44; border-bottom:2px solid transparent; }
+  .u09-tab.active { color:#7dffa0; border-bottom-color:#3ddc6b; text-shadow:0 0 6px rgba(61,220,107,0.5); }
+  .u09-label { font-size:10px; letter-spacing:0.15em; color:#2e7a44; text-transform:uppercase; }
+  .u09-glow { text-shadow:0 0 6px rgba(61,220,107,0.5); }
+  textarea.u09-input { resize:vertical; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const ATTRIBUTES = [
+  { key: "forca", label: "FORÇA", skills: ["Atletismo", "Corpo a Corpo", "Resistência"] },
+  { key: "agilidade", label: "AGILIDADE", skills: ["Furtividade", "Pilotagem", "Reflexos", "Pontaria"] },
+  { key: "intelecto", label: "INTELECTO", skills: ["Engenharia", "Medicina", "Ciência", "Informática"] },
+  { key: "sentidos", label: "SENTIDOS", skills: ["Percepção", "Investigação", "Sobrevivência", "Análise"] },
+  { key: "coragem", label: "CORAGEM", skills: ["Intimidação", "Vontade", "Liderança", "Determinação"] },
+  { key: "carisma", label: "CARISMA", skills: ["Persuasão", "Enganação", "Negociação", "Artes"] },
+];
+
+const BODY_PARTS = [
+  { key: "cabeca", label: "Cabeça", area: "cabeca" },
+  { key: "bracoE", label: "Braço E", area: "bracoE" },
+  { key: "tronco", label: "Tronco", area: "tronco" },
+  { key: "bracoD", label: "Braço D", area: "bracoD" },
+  { key: "pernaE", label: "Perna E", area: "pernaE" },
+  { key: "pernaD", label: "Perna D", area: "pernaD" },
+];
+
+const EQUIP_SLOTS = [
+  { key: "capacete", label: "Capacete", emoji: "⛑" },
+  { key: "camisa", label: "Camisa", emoji: "👕" },
+  { key: "calca", label: "Calça", emoji: "👖" },
+  { key: "calcado", label: "Calçado", emoji: "👢" },
+];
+
+const TABS = [
+  { key: "ficha", label: "Ficha" },
+  { key: "vida", label: "Vida & equipamento" },
+  { key: "itens", label: "Inventário & habilidades" },
+  { key: "historia", label: "História & diário" },
+];
+
+let uid = 0;
+const nextId = () => `id-${Date.now()}-${uid++}`;
+
+function emptySkillValues() {
+  const obj = {};
+  ATTRIBUTES.forEach((a) => a.skills.forEach((s) => (obj[s] = 0)));
+  return obj;
+}
+function emptyBodyValues(v = 0) {
+  const obj = {};
+  BODY_PARTS.forEach((p) => (obj[p.key] = v));
+  return obj;
+}
+function emptyEquipment() {
+  const obj = {};
+  EQUIP_SLOTS.forEach((s) => (obj[s.key] = { name: "", ca: 0 }));
+  return obj;
+}
+function newSheet() {
+  return {
+    charName: "", playerName: "", role: "", avatarUrl: "",
+    attrPool: 12, attrValues: Object.fromEntries(ATTRIBUTES.map((a) => [a.key, 0])),
+    skillPool: 20, skillValues: emptySkillValues(),
+    pvPool: 30, pvMax: emptyBodyValues(0), pvCurrent: emptyBodyValues(0),
+    caBase: 0, equipment: emptyEquipment(),
+    inventory: [], abilities: [], background: "", diary: [],
+  };
+}
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+async function apiCall(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  return { ok: res.ok, status: res.status, data };
+}
+
+function MatrixRain() {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const ctx = canvas.getContext("2d");
+    const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
+    const fontSize = 15;
+    let width, height, columns, drops, animId;
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      columns = Math.ceil(width / fontSize);
+      drops = Array.from({ length: columns }, () => Math.random() * (height / fontSize));
+    }
+    resize();
+    window.addEventListener("resize", resize);
+    function draw() {
+      ctx.fillStyle = "rgba(4,6,3,0.09)";
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+      for (let i = 0; i < columns; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const y = drops[i] * fontSize;
+        ctx.fillStyle = Math.random() > 0.96 ? "#c8ffd9" : "#1f9b45";
+        ctx.fillText(char, i * fontSize, y);
+        if (y > height && Math.random() > 0.975) drops[i] = 0; else drops[i] += 1;
+      }
+      animId = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "#040603" }} />;
+}
+
+function LoginGate({ onUnlock }) {
+  const [mode, setMode] = useState("login");
+  const [keyword, setKeyword] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState("info");
+
+  function switchMode(next) { setMode(next); setKeyword(""); setPassword(""); setMsg(""); setMsgType("info"); }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const kw = keyword.trim().toLowerCase();
+    if (!kw || !password) { setMsg("PREENCHA PALAVRA-CHAVE E SENHA."); setMsgType("error"); return; }
+    setBusy(true); setMsg("BUSCANDO ARQUIVO…"); setMsgType("info");
+    const { ok, status, data } = await apiCall("/api/localizar", { keyword: kw, password });
+    if (ok) {
+      setMsg("ACESSO CONCEDIDO."); setMsgType("ok");
+      setTimeout(() => onUnlock(kw, password, data.sheet), 300);
+    } else if (status === 404) {
+      setMsg("ARQUIVO NÃO ENCONTRADO. VERIFIQUE A PALAVRA-CHAVE OU CRIE UM NOVO REGISTRO ABAIXO."); setMsgType("error");
+    } else if (status === 401) {
+      setMsg("SENHA INCORRETA. ACESSO NEGADO."); setMsgType("error");
+    } else {
+      setMsg("FALHA DE CONEXÃO COM O SERVIDOR. TENTE NOVAMENTE."); setMsgType("error");
+    }
+    setBusy(false);
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    const kw = keyword.trim().toLowerCase();
+    if (!kw || !password) { setMsg("PREENCHA PALAVRA-CHAVE E SENHA PARA O NOVO REGISTRO."); setMsgType("error"); return; }
+    setBusy(true); setMsg("REGISTRANDO…"); setMsgType("info");
+    const fresh = newSheet();
+    const { ok, status, data } = await apiCall("/api/criar", { keyword: kw, password, sheet: fresh });
+    if (ok) {
+      setMsg("FICHA REGISTRADA. ACESSANDO…"); setMsgType("ok");
+      setTimeout(() => onUnlock(kw, password, data.sheet || fresh), 400);
+    } else if (status === 409) {
+      setMsg("ACESSO NEGADO: TAL INDIVÍDUO JÁ POSSUI UMA FICHA VIRTUAL E É IMPOSSÍVEL DE SER RECRIADO SEM A EXCLUSÃO DA FICHA JÁ FEITA."); setMsgType("error");
+    } else {
+      setMsg("FALHA AO REGISTRAR. TENTE NOVAMENTE."); setMsgType("error");
+    }
+    setBusy(false);
+  }
+
+  const msgColor = msgType === "error" ? "#ff5a4d" : msgType === "ok" ? "#7dffa0" : "#3ddc6b";
+
+  if (mode === "create") {
+    return (
+      <div style={{ minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative", overflow: "hidden" }}>
+        <MatrixRain />
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 460, border: "1px solid #1a3a1a", background: "rgba(4,10,4,0.92)", padding: 28 }}>
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" }}>IRIS COMPANY</div>
+            <div style={{ fontSize: 10, letterSpacing: "0.15em", color: "#1a6b32", marginTop: 2 }}>NOTIFICAÇÃO DE NOVA FICHA ELETRÔNICA</div>
+          </div>
+          <div style={{ border: "1px solid #5c2323", background: "rgba(30,8,8,0.5)", padding: "10px 12px", marginBottom: 10, fontSize: 11, lineHeight: 1.6, color: "#ff9a8f" }}>
+            AVISO DA EMPRESA: por norma da empresa, é necessário informar que criar uma ficha falsa resulta em multa de 500.000 créditos.
+          </div>
+          <div style={{ border: "1px solid #5c2323", background: "rgba(30,8,8,0.5)", padding: "10px 12px", marginBottom: 18, fontSize: 11, lineHeight: 1.6, color: "#ff9a8f" }}>
+            AVISO DA EMPRESA: por norma da empresa, também é necessário notificar que isso conta como um contrato de utilização de suas informações pessoais. Ao criar uma ficha, não será possível qualquer tentativa de uso de leis de direitos autorais — previsto no artigo 184 do Código Penal (Decreto-Lei nº 2.848/1940).
+          </div>
+          <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: "0.15em", marginBottom: 4, color: "#2ec95c" }}>NOVA PALAVRA-CHAVE</div>
+              <input value={keyword} onChange={(e) => setKeyword(e.target.value)} style={termInput} autoComplete="off" placeholder="ex: tyr-07" />
+            </div>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: "0.15em", marginBottom: 4, color: "#2ec95c" }}>NOVA SENHA</div>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={termInput} autoComplete="off" />
+            </div>
+            <button type="submit" disabled={busy} style={termBtn}>🔒 {busy ? "PROCESSANDO…" : "CRIAR FICHA"}</button>
+          </form>
+          {msg && <div style={{ marginTop: 14, fontSize: 11, letterSpacing: "0.04em", color: msgColor, lineHeight: 1.5 }}>&gt; {msg}</div>}
+          <button onClick={() => switchMode("login")} style={{ ...termBtn, marginTop: 16, background: "transparent", borderColor: "#235c2f", width: "100%", justifyContent: "center" }}>
+            VOLTAR PARA LOCALIZAR ARQUIVO
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" }}>
+      <MatrixRain />
+      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 440, border: "1px solid #1a3a1a", background: "rgba(5,15,5,0.85)", padding: 28 }}>
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" }}>IRIS COMPANY</div>
+          <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#1a6b32", marginTop: 2 }}>SISTEMA OPERACIONAL — MODULO DE ARQUIVOS</div>
+        </div>
+        <div style={{ borderTop: "1px solid #1a3a1a", borderBottom: "1px solid #1a3a1a", padding: "12px 0", marginBottom: 18, fontSize: 12, lineHeight: 1.6, color: "#2ec95c" }}>
+          &gt; Por favor use a palavra-chave e senha para<br />
+          &gt; localizar a ficha eletrônica do indivíduo.
+        </div>
+        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: "0.15em", marginBottom: 4, color: "#2ec95c" }}>PALAVRA-CHAVE</div>
+            <input value={keyword} onChange={(e) => setKeyword(e.target.value)} style={termInput} autoComplete="off" placeholder="ex: tyr-07" />
+          </div>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: "0.15em", marginBottom: 4, color: "#2ec95c" }}>SENHA</div>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={termInput} autoComplete="off" />
+          </div>
+          <button type="submit" disabled={busy} style={termBtn}>🔒 {busy ? "PROCESSANDO…" : "LOCALIZAR ARQUIVO"}</button>
+        </form>
+        {msg && <div style={{ marginTop: 14, fontSize: 11, letterSpacing: "0.04em", color: msgColor, lineHeight: 1.5 }}>&gt; {msg}</div>}
+        <div style={{ marginTop: 22, borderTop: "1px solid #1a3a1a", paddingTop: 14, fontSize: 11, lineHeight: 1.6, color: "#2e7a44" }}>
+          Caso queira criar uma nova ficha eletrônica para um indivíduo desconhecido pelo sistema, aperte abaixo em notificar nova ficha. Lembre que toda nova ficha encontrada deverá ter uma palavra-chave e uma senha próprias.
+        </div>
+        <button onClick={() => switchMode("create")} style={{ ...termBtn, marginTop: 10, width: "100%", justifyContent: "center" }}>NOTIFICAR NOVA FICHA</button>
+      </div>
+    </div>
+  );
+}
+
+const termInput = { width: "100%", background: "#050c05", border: "1px solid #235c2f", color: "#7dffa0", padding: "8px 10px", fontFamily: "'Share Tech Mono','Roboto Mono',monospace", fontSize: 14, letterSpacing: "0.05em" };
+const termBtn = { background: "#0d1f0d", border: "1px solid #3ddc6b", color: "#7dffa0", padding: "9px 12px", fontFamily: "'Share Tech Mono',monospace", letterSpacing: "0.1em", fontSize: 12, cursor: "pointer", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
+
+function App() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [password, setPassword] = useState("");
+  const [sheet, setSheet] = useState(newSheet());
+  const [activeTab, setActiveTab] = useState("ficha");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [lastRoll, setLastRoll] = useState(null);
+  const [invDraft, setInvDraft] = useState({ name: "", qty: 1, note: "" });
+  const [abilDraft, setAbilDraft] = useState({ name: "", desc: "" });
+  const [diaryDraft, setDiaryDraft] = useState("");
+
+  function handleUnlock(kw, pw, loadedSheet) {
+    setKeyword(kw); setPassword(pw); setSheet({ ...newSheet(), ...loadedSheet }); setUnlocked(true);
+  }
+
+  const attrSpent = Object.values(sheet.attrValues).reduce((a, b) => a + b, 0);
+  const attrRemaining = sheet.attrPool - attrSpent;
+  const skillSpent = Object.values(sheet.skillValues).reduce((a, b) => a + b, 0);
+  const skillRemaining = sheet.skillPool - skillSpent;
+  const pvSpent = Object.values(sheet.pvMax).reduce((a, b) => a + b, 0);
+  const pvRemaining = sheet.pvPool - pvSpent;
+  const bonusPV = ATTRIBUTES.reduce((sum, a) => {
+    const vals = a.skills.map((s) => sheet.skillValues[s]);
+    const min = Math.min(...vals);
+    return sum + (min >= 1 ? min : 0);
+  }, 0);
+  const totalPVMax = pvSpent + bonusPV;
+  const totalPVCurrent = Object.values(sheet.pvCurrent).reduce((a, b) => a + b, 0);
+  const equipCA = Object.values(sheet.equipment).reduce((sum, e) => sum + (Number(e.ca) || 0), 0);
+  const totalCA = (Number(sheet.caBase) || 0) + equipCA;
+
+  function setAttr(key, delta) {
+    setSheet((s) => {
+      const cur = s.attrValues[key]; const next = clamp(cur + delta, 0, 20);
+      if (next === cur) return s;
+      if (delta > 0 && attrRemaining <= 0) return s;
+      return { ...s, attrValues: { ...s.attrValues, [key]: next } };
+    });
+  }
+  function setSkill(name, delta) {
+    setSheet((s) => {
+      const cur = s.skillValues[name]; const next = clamp(cur + delta, 0, 20);
+      if (next === cur) return s;
+      if (delta > 0 && skillRemaining <= 0) return s;
+      return { ...s, skillValues: { ...s.skillValues, [name]: next } };
+    });
+  }
+  function setPVMax(key, delta) {
+    setSheet((s) => {
+      const cur = s.pvMax[key]; const next = clamp(cur + delta, 0, 30);
+      if (next === cur) return s;
+      if (delta > 0 && pvRemaining <= 0) return s;
+      const curVal = s.pvCurrent[key];
+      return { ...s, pvMax: { ...s.pvMax, [key]: next }, pvCurrent: { ...s.pvCurrent, [key]: Math.min(curVal, next) } };
+    });
+  }
+  function setPVCurrent(key, delta) {
+    setSheet((s) => {
+      const max = s.pvMax[key]; const cur = s.pvCurrent[key]; const next = clamp(cur + delta, 0, max);
+      return { ...s, pvCurrent: { ...s.pvCurrent, [key]: next } };
+    });
+  }
+  function healAll() { setSheet((s) => ({ ...s, pvCurrent: { ...s.pvMax } })); }
+
+  function rollSkill(attrKey, attrLabel, skillName) {
+    const roll = 1 + Math.floor(Math.random() * 20);
+    const attrVal = sheet.attrValues[attrKey];
+    const skillVal = sheet.skillValues[skillName];
+    const total = roll + attrVal + skillVal;
+    setLastRoll({ skillName, attrLabel, roll, attrVal, skillVal, total, id: nextId() });
+  }
+
+  function addInventoryItem() {
+    if (!invDraft.name.trim()) return;
+    setSheet((s) => ({ ...s, inventory: [...s.inventory, { id: nextId(), ...invDraft, qty: Number(invDraft.qty) || 1 }] }));
+    setInvDraft({ name: "", qty: 1, note: "" });
+  }
+  function removeInventoryItem(id) { setSheet((s) => ({ ...s, inventory: s.inventory.filter((i) => i.id !== id) })); }
+  function addAbility() {
+    if (!abilDraft.name.trim()) return;
+    setSheet((s) => ({ ...s, abilities: [...s.abilities, { id: nextId(), ...abilDraft }] }));
+    setAbilDraft({ name: "", desc: "" });
+  }
+  function removeAbility(id) { setSheet((s) => ({ ...s, abilities: s.abilities.filter((a) => a.id !== id) })); }
+  function addDiaryEntry() {
+    if (!diaryDraft.trim()) return;
+    const date = new Date().toLocaleDateString("pt-BR");
+    setSheet((s) => ({ ...s, diary: [{ id: nextId(), date, text: diaryDraft }, ...s.diary] }));
+    setDiaryDraft("");
+  }
+  function removeDiaryEntry(id) { setSheet((s) => ({ ...s, diary: s.diary.filter((d) => d.id !== id) })); }
+
+  async function saveSheet() {
+    setBusy(true);
+    const { ok } = await apiCall("/api/salvar", { keyword, password, sheet });
+    setStatus(ok ? "ARQUIVO GRAVADO." : "FALHA AO GRAVAR. TENTE NOVAMENTE.");
+    setBusy(false);
+  }
+
+  function logout() { setUnlocked(false); setKeyword(""); setPassword(""); setSheet(newSheet()); setStatus(""); }
+
+  if (!unlocked) return <LoginGate onUnlock={handleUnlock} />;
+
+  return (
+    <div style={{ fontFamily: "'Share Tech Mono','Roboto Mono',monospace", color: "#7dffa0", minHeight: "100vh", position: "relative" }}>
+      <MatrixRain />
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <div style={{ borderBottom: "1px solid #1a3a1a", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 18 }}>🖥</span>
+          <div className="u09-glow" style={{ fontWeight: 600, fontSize: 15, letterSpacing: "0.1em" }}>
+            IRIS COMPANY <span style={{ color: "#2e7a44", fontSize: 11 }}>/ ARQUIVO: {keyword.toUpperCase()}</span>
+          </div>
+          <div style={{ flex: 1 }} />
+          <button className="u09-btn" onClick={saveSheet} disabled={busy}>💾 GRAVAR</button>
+          <button className="u09-btn" onClick={logout}>🔒 ENCERRAR SESSÃO</button>
+        </div>
+        {status && <div className="u09-mono" style={{ padding: "6px 20px", fontSize: 11, color: "#3ddc6b", borderBottom: "1px solid #1a3a1a" }}>&gt; {status}</div>}
+
+        <div style={{ padding: 20, maxWidth: 980, margin: "0 auto" }}>
+          <div className="u09-card" style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
+            <div style={{ width: 84, height: 84, background: "#0a160a", border: "1px solid #235c2f", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {sheet.avatarUrl ? (
+                <img src={sheet.avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(40%) sepia(20%) hue-rotate(60deg)" }} />
+              ) : (<span style={{ fontSize: 28, color: "#235c2f" }}>◈</span>)}
+            </div>
+            <div style={{ flex: 1, minWidth: 220, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div><div className="u09-label">Nome do personagem</div><input className="u09-input" style={{ width: "100%" }} value={sheet.charName} onChange={(e) => setSheet((s) => ({ ...s, charName: e.target.value }))} placeholder="Nome" /></div>
+              <div><div className="u09-label">Jogador</div><input className="u09-input" style={{ width: "100%" }} value={sheet.playerName} onChange={(e) => setSheet((s) => ({ ...s, playerName: e.target.value }))} placeholder="Nome do jogador" /></div>
+              <div><div className="u09-label">Função / cargo</div><input className="u09-input" style={{ width: "100%" }} value={sheet.role} onChange={(e) => setSheet((s) => ({ ...s, role: e.target.value }))} placeholder="Ex: engenheira de campo" /></div>
+              <div><div className="u09-label">URL da foto</div><input className="u09-input" style={{ width: "100%" }} value={sheet.avatarUrl} onChange={(e) => setSheet((s) => ({ ...s, avatarUrl: e.target.value }))} placeholder="https://…" /></div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1a3a1a", marginBottom: 20, flexWrap: "wrap" }}>
+            {TABS.map((t) => (<div key={t.key} className={`u09-tab ${activeTab === t.key ? "active" : ""}`} onClick={() => setActiveTab(t.key)}>{t.label}</div>))}
+          </div>
+
+          {activeTab === "ficha" && (
+            <div>
+              <div style={{ display: "flex", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
+                <PoolEditor label="Pontos de atributo" pool={sheet.attrPool} remaining={attrRemaining} onChange={(v) => setSheet((s) => ({ ...s, attrPool: v }))} />
+                <PoolEditor label="Pontos de perícia" pool={sheet.skillPool} remaining={skillRemaining} onChange={(v) => setSheet((s) => ({ ...s, skillPool: v }))} />
+              </div>
+              {lastRoll && (
+                <div className="u09-card u09-mono" style={{ marginBottom: 16, borderColor: "#3ddc6b", display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                  <span>🎲</span>
+                  <span style={{ color: "#2e7a44" }}>{lastRoll.attrLabel} · {lastRoll.skillName}</span>
+                  <span>1d20({lastRoll.roll}) + {lastRoll.attrVal} + {lastRoll.skillVal} =</span>
+                  <span className="u09-glow" style={{ fontSize: 18, fontWeight: 700 }}>{lastRoll.total}</span>
+                </div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
+                {ATTRIBUTES.map((a) => (
+                  <div key={a.key} className="u09-card">
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <div style={{ fontWeight: 600, letterSpacing: "0.08em", fontSize: 13 }}>{a.label}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div className="u09-stepper" onClick={() => setAttr(a.key, -1)}>−</div>
+                        <div className="u09-mono u09-glow" style={{ width: 26, textAlign: "center", fontSize: 16, fontWeight: 600 }}>{sheet.attrValues[a.key]}</div>
+                        <div className="u09-stepper" onClick={() => setAttr(a.key, 1)}>+</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {a.skills.map((s) => (
+                        <div key={s} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                          <span style={{ fontSize: 12, color: "#a8e8ba" }}>{s}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <div className="u09-stepper" style={{ width: 18, height: 18 }} onClick={() => setSkill(s, -1)}>−</div>
+                            <div className="u09-mono" style={{ width: 18, textAlign: "center", fontSize: 12 }}>{sheet.skillValues[s]}</div>
+                            <div className="u09-stepper" style={{ width: 18, height: 18 }} onClick={() => setSkill(s, 1)}>+</div>
+                            <div className="u09-stepper" style={{ width: 18, height: 18, color: "#e8c33d", borderColor: "#5c5223" }} onClick={() => rollSkill(a.key, a.label, s)} title="Rolar">🎲</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "vida" && (
+            <div>
+              <div style={{ display: "flex", gap: 20, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+                <PoolEditor label="Pontos de vida (distribuição)" pool={sheet.pvPool} remaining={pvRemaining} onChange={(v) => setSheet((s) => ({ ...s, pvPool: v }))} />
+                <div className="u09-card" style={{ padding: "8px 14px" }}><div className="u09-label">Bônus de sinergia</div><div className="u09-mono" style={{ fontSize: 17, color: "#e8c33d", fontWeight: 700 }}>+{bonusPV} PV</div></div>
+                <div className="u09-card" style={{ padding: "8px 14px" }}>
+                  <div className="u09-label">PV total</div>
+                  <div className="u09-mono" style={{ fontSize: 17, fontWeight: 700 }}>
+                    <span style={{ color: totalPVCurrent <= totalPVMax * 0.3 ? "#ff5a4d" : "#7dffa0" }}>{totalPVCurrent}</span>
+                    <span style={{ color: "#2e7a44" }}> / {totalPVMax}</span>
+                  </div>
+                </div>
+                <div className="u09-card" style={{ padding: "8px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span>🛡</span><div className="u09-label">CA</div></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input className="u09-input u09-mono" type="number" style={{ width: 46, fontSize: 15 }} value={sheet.caBase} onChange={(e) => setSheet((s) => ({ ...s, caBase: Number(e.target.value) || 0 }))} />
+                    <span style={{ color: "#2e7a44", fontSize: 11 }}>base +{equipCA} equip =</span>
+                    <span className="u09-mono u09-glow" style={{ fontSize: 17, fontWeight: 700 }}>{totalCA}</span>
+                  </div>
+                </div>
+                <button className="u09-btn" onClick={healAll}>❤ CURAR TUDO</button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateAreas: `". cabeca ." "bracoE tronco bracoD" "pernaE . pernaD"`, gap: 10, maxWidth: 620, marginBottom: 24 }}>
+                {BODY_PARTS.map((p) => (
+                  <div key={p.key} style={{ gridArea: p.area }}>
+                    <BodyPart label={p.label} max={sheet.pvMax[p.key]} current={sheet.pvCurrent[p.key]} onMax={(d) => setPVMax(p.key, d)} onCur={(d) => setPVCurrent(p.key, d)} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="u09-label" style={{ marginBottom: 8 }}>Equipamento (fornece CA)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+                {EQUIP_SLOTS.map((slot) => (
+                  <div key={slot.key} className="u09-card" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 20 }}>{slot.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <div className="u09-label">{slot.label}</div>
+                      <input className="u09-input" style={{ width: "100%", marginBottom: 4 }} placeholder="Vazio" value={sheet.equipment[slot.key].name} onChange={(e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], name: e.target.value } } }))} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 10, color: "#2e7a44" }}>CA</span>
+                        <input className="u09-input u09-mono" type="number" style={{ width: 44 }} value={sheet.equipment[slot.key].ca} onChange={(e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], ca: Number(e.target.value) || 0 } } }))} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "itens" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              <div>
+                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>🎒 Inventário</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                  {sheet.inventory.map((it) => (
+                    <div key={it.id} className="u09-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{it.name} <span className="u09-mono" style={{ color: "#2e7a44" }}>x{it.qty}</span></div>
+                        {it.note && <div style={{ fontSize: 12, color: "#2e7a44" }}>{it.note}</div>}
+                      </div>
+                      <span style={{ cursor: "pointer", color: "#ff5a4d" }} onClick={() => removeInventoryItem(it.id)}>🗑</span>
+                    </div>
+                  ))}
+                  {sheet.inventory.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhum item ainda.</div>}
+                </div>
+                <div className="u09-card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input className="u09-input" placeholder="Item" value={invDraft.name} onChange={(e) => setInvDraft((d) => ({ ...d, name: e.target.value }))} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input className="u09-input" type="number" min="1" style={{ width: 60 }} value={invDraft.qty} onChange={(e) => setInvDraft((d) => ({ ...d, qty: e.target.value }))} />
+                    <input className="u09-input" placeholder="Observação" style={{ flex: 1 }} value={invDraft.note} onChange={(e) => setInvDraft((d) => ({ ...d, note: e.target.value }))} />
+                  </div>
+                  <button className="u09-btn" onClick={addInventoryItem}>+ ADICIONAR ITEM</button>
+                </div>
+              </div>
+              <div>
+                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>✨ Habilidades especiais</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                  {sheet.abilities.map((ab) => (
+                    <div key={ab.id} className="u09-card" style={{ padding: "8px 10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{ab.name}</div>
+                        <span style={{ cursor: "pointer", color: "#ff5a4d", flexShrink: 0 }} onClick={() => removeAbility(ab.id)}>🗑</span>
+                      </div>
+                      {ab.desc && <div style={{ fontSize: 12, color: "#2e7a44", marginTop: 4 }}>{ab.desc}</div>}
+                    </div>
+                  ))}
+                  {sheet.abilities.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhuma habilidade ainda.</div>}
+                </div>
+                <div className="u09-card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input className="u09-input" placeholder="Nome da habilidade" value={abilDraft.name} onChange={(e) => setAbilDraft((d) => ({ ...d, name: e.target.value }))} />
+                  <textarea className="u09-input" rows={2} placeholder="Descrição" value={abilDraft.desc} onChange={(e) => setAbilDraft((d) => ({ ...d, desc: e.target.value }))} />
+                  <button className="u09-btn" onClick={addAbility}>+ ADICIONAR HABILIDADE</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "historia" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              <div>
+                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>📖 Histórico</div>
+                <textarea className="u09-input" style={{ width: "100%", minHeight: 320 }} placeholder="Origem, motivações, eventos marcantes do personagem…" value={sheet.background} onChange={(e) => setSheet((s) => ({ ...s, background: e.target.value }))} />
+              </div>
+              <div>
+                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>📓 Diário</div>
+                <div className="u09-card" style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                  <textarea className="u09-input" rows={3} placeholder="Nova anotação…" value={diaryDraft} onChange={(e) => setDiaryDraft(e.target.value)} />
+                  <button className="u09-btn" onClick={addDiaryEntry}>+ ADICIONAR ANOTAÇÃO</button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
+                  {sheet.diary.map((d) => (
+                    <div key={d.id} className="u09-card" style={{ padding: "8px 10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span className="u09-mono" style={{ fontSize: 11, color: "#2e7a44" }}>{d.date}</span>
+                        <span style={{ cursor: "pointer", color: "#ff5a4d" }} onClick={() => removeDiaryEntry(d.id)}>🗑</span>
+                      </div>
+                      <div style={{ fontSize: 13, marginTop: 4, whiteSpace: "pre-wrap" }}>{d.text}</div>
+                    </div>
+                  ))}
+                  {sheet.diary.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhuma anotação ainda.</div>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PoolEditor({ label, pool, remaining, onChange }) {
+  return (
+    <div className="u09-card" style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div>
+        <div className="u09-label">{label}</div>
+        <div className="u09-mono" style={{ fontSize: 13 }}>Disponíveis: <span style={{ color: remaining < 0 ? "#ff5a4d" : "#3ddc6b", fontWeight: 700 }}>{remaining}</span></div>
+      </div>
+      <input className="u09-input" type="number" style={{ width: 60 }} value={pool} onChange={(e) => onChange(Number(e.target.value) || 0)} />
+    </div>
+  );
+}
+function BodyPart({ label, max, current, onMax, onCur }) {
+  const pct = max > 0 ? (current / max) * 100 : 0;
+  const barColor = pct <= 30 ? "#ff5a4d" : pct <= 60 ? "#e8c33d" : "#3ddc6b";
+  return (
+    <div className="u09-card" style={{ padding: "8px 10px" }}>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: "#a8e8ba" }}>{label}</div>
+      <div style={{ height: 5, background: "#0a160a", overflow: "hidden", marginBottom: 6 }}><div style={{ height: "100%", width: `${pct}%`, background: barColor }} /></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span className="u09-label" style={{ marginRight: 2 }}>Máx</span>
+          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onMax(-1)}>−</div>
+          <span className="u09-mono">{max}</span>
+          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onMax(1)}>+</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span className="u09-label" style={{ marginRight: 2 }}>Atual</span>
+          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onCur(-1)}>−</div>
+          <span className="u09-mono">{current}</span>
+          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onCur(1)}>+</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
