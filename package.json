@@ -1,0 +1,15 @@
+{
+  "name": "umbra09-servidor",
+  "version": "1.0.0",
+  "description": "Servidor da ficha eletronica do UMBRA-09 (IRIS COMPANY)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
