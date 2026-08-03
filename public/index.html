@@ -374,12 +374,28 @@ function App() {
     const [abilDraft, setAbilDraft] = useState({ name: "", desc: "" });
     const [diaryDraft, setDiaryDraft] = useState("");
     const [tituloDraft, setTituloDraft] = useState("");
+    const justUnlockedRef = useRef(true);
     function handleUnlock(kw, pw, loadedSheet) {
+        justUnlockedRef.current = true;
         setKeyword(kw);
         setPassword(pw);
         setSheet({ ...newSheet(), ...loadedSheet });
         setUnlocked(true);
     }
+    useEffect(() => {
+        if (!unlocked)
+            return undefined;
+        if (justUnlockedRef.current) {
+            justUnlockedRef.current = false;
+            return undefined;
+        }
+        const timer = setTimeout(async () => {
+            const { ok } = await apiCall("/api/salvar", { keyword, password, sheet });
+            setStatus(ok ? `SALVO AUTOMATICAMENTE ÀS ${new Date().toLocaleTimeString("pt-BR")}.` : "FALHA AO SALVAR AUTOMATICAMENTE.");
+        }, 1200);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line
+    }, [sheet, unlocked]);
     const attrSpent = Object.values(sheet.attrValues).reduce((a, b) => a + b, 0);
     const attrRemaining = sheet.attrPool - attrSpent;
     const skillSpent = Object.values(sheet.skillValues).reduce((a, b) => a + b, 0);
