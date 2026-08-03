@@ -25,13 +25,6 @@
   .u09-label { font-size:10px; letter-spacing:0.15em; color:#2e7a44; text-transform:uppercase; }
   .u09-glow { text-shadow:0 0 6px rgba(61,220,107,0.5); }
   textarea.u09-input { resize:vertical; }
-  .iris-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; overflow:hidden; pointer-events:none; }
-  .iris-vortex { width:280vmax; height:280vmax; background: repeating-conic-gradient(from 0deg, #041006 0deg 9deg, #123d1c 9deg 18deg); border-radius:50%; animation: iris-spin 1.15s cubic-bezier(.6,0,.35,1) forwards; }
-  .iris-black { position:absolute; inset:0; background:#000; clip-path: circle(150% at center); animation: iris-close 1.15s cubic-bezier(.6,0,.35,1) forwards; }
-  .iris-eye { position:absolute; width:14px; height:14px; border-radius:50%; background:#7dffa0; box-shadow:0 0 40px 12px rgba(125,255,160,0.8); animation: iris-eye-fade 1.15s ease-in forwards; }
-  @keyframes iris-spin { 0% { transform: rotate(0deg) scale(1); } 100% { transform: rotate(1080deg) scale(0.015); } }
-  @keyframes iris-close { 0% { clip-path: circle(150% at center); } 65% { clip-path: circle(35% at center); } 100% { clip-path: circle(0% at center); } }
-  @keyframes iris-eye-fade { 0% { opacity:0; transform:scale(0.3);} 60% { opacity:1; transform:scale(1);} 100% { opacity:0; transform:scale(2.4);} }
 </style>
 </head>
 <body>
@@ -80,11 +73,25 @@ const BODY_PARTS = [
   { key: "pernaD", label: "Perna D", area: "pernaD" },
 ];
 
+const EQUIP_ICONS = {
+  capacete: "M4 18c0-5 3.6-9.2 8-9.2s8 4.2 8 9.2M3 18h18",
+  camisa: "M8 3 4 7l2.5 3L8 9v11h8V9l1.5 1L20 7l-4-4-2 2h-4z",
+  calca: "M6 3h12l1 18h-4l-1-11-1 11H9l-1-11-1 11H3z",
+  calcado: "M7 2v9l-4.5 3.5C2 15 2 16 2 17v3h11v-4h6c1.6 0 3-1.3 3-3 0-1.6-1.3-3-3-3h-6V2z",
+};
+function EquipIcon({ slotKey }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3ddc6b" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+      <path d={EQUIP_ICONS[slotKey]} />
+    </svg>
+  );
+}
+
 const EQUIP_SLOTS = [
-  { key: "capacete", label: "Capacete", emoji: "⛑" },
-  { key: "camisa", label: "Camisa", emoji: "👕" },
-  { key: "calca", label: "Calça", emoji: "👖" },
-  { key: "calcado", label: "Calçado", emoji: "👢" },
+  { key: "capacete", label: "Capacete" },
+  { key: "camisa", label: "Camisa" },
+  { key: "calca", label: "Calça" },
+  { key: "calcado", label: "Calçado" },
 ];
 
 const TABS = [
@@ -155,7 +162,7 @@ function MatrixRain() {
     window.addEventListener("resize", resize);
     function draw() {
       frame++;
-      if (frame % 3 === 0) {
+      if (frame % 7 === 0) {
         ctx.fillStyle = "rgba(4,6,3,0.09)";
         ctx.fillRect(0, 0, width, height);
         ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
@@ -175,14 +182,63 @@ function MatrixRain() {
   return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "#040603" }} />;
 }
 
-function IrisTransition() {
-  return (
-    <div className="iris-overlay">
-      <div className="iris-vortex" />
-      <div className="iris-eye" />
-      <div className="iris-black" />
-    </div>
-  );
+function IrisTransition({ onDone }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const ctx = canvas.getContext("2d");
+    const w = (canvas.width = window.innerWidth);
+    const h = (canvas.height = window.innerHeight);
+    const cx = w / 2, cy = h / 2;
+    const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
+    const N = 160;
+    const particles = Array.from({ length: N }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      radius: Math.max(w, h) * 0.6 * (0.35 + Math.random() * 0.75),
+      speed: 0.01 + Math.random() * 0.015,
+      char: chars[Math.floor(Math.random() * chars.length)],
+    }));
+    let start = null;
+    const DURATION = 1900;
+    let raf;
+    function frame(ts) {
+      if (!start) start = ts;
+      const t = Math.min(1, (ts - start) / DURATION);
+      const fadeOut = t > 0.82 ? (t - 0.82) / 0.18 : 0;
+      ctx.fillStyle = `rgba(4,6,3,${0.4 + fadeOut * 0.6})`;
+      ctx.fillRect(0, 0, w, h);
+
+      const ringR = (26 + 34 * (1 - t)) * (1 - fadeOut);
+      ctx.save();
+      ctx.strokeStyle = `rgba(125,255,160,${0.9 * (1 - fadeOut)})`;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = "#3ddc6b";
+      ctx.shadowBlur = 30;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(2, ringR), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.font = "16px 'Share Tech Mono', monospace";
+      particles.forEach((p) => {
+        p.angle += p.speed * (1 + t * 9);
+        p.radius *= 1 - (0.006 + t * 0.028);
+        const x = cx + Math.cos(p.angle) * p.radius;
+        const y = cy + Math.sin(p.angle) * p.radius * 0.55;
+        ctx.globalAlpha = Math.max(0, (1 - fadeOut) * Math.min(1, p.radius / 40));
+        ctx.fillStyle = Math.random() > 0.9 ? "#c8ffd9" : "#3ddc6b";
+        ctx.fillText(p.char, x, y);
+      });
+      ctx.globalAlpha = 1;
+
+      if (t < 1) raf = requestAnimationFrame(frame);
+      else onDone && onDone();
+    }
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none" }} />;
 }
 
 function LoginGate({ onUnlock }) {
@@ -193,6 +249,7 @@ function LoginGate({ onUnlock }) {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState("info");
   const [transitioning, setTransitioning] = useState(false);
+  const [pendingUnlock, setPendingUnlock] = useState(null);
 
   function switchMode(next) { setMode(next); setKeyword(""); setPassword(""); setMsg(""); setMsgType("info"); }
 
@@ -204,7 +261,7 @@ function LoginGate({ onUnlock }) {
     const { ok, status, data } = await apiCall("/api/localizar", { keyword: kw, password });
     if (ok) {
       setMsg("ACESSO CONCEDIDO."); setMsgType("ok"); setTransitioning(true);
-      setTimeout(() => onUnlock(kw, password, data.sheet), 1150);
+      setPendingUnlock({ kw, password, sheet: data.sheet });
     } else if (status === 404) {
       setMsg("ARQUIVO NÃO ENCONTRADO. VERIFIQUE A PALAVRA-CHAVE OU CRIE UM NOVO REGISTRO ABAIXO."); setMsgType("error");
     } else if (status === 401) {
@@ -224,7 +281,7 @@ function LoginGate({ onUnlock }) {
     const { ok, status, data } = await apiCall("/api/criar", { keyword: kw, password, sheet: fresh });
     if (ok) {
       setMsg("FICHA REGISTRADA. ACESSANDO…"); setMsgType("ok"); setTransitioning(true);
-      setTimeout(() => onUnlock(kw, password, data.sheet || fresh), 1150);
+      setPendingUnlock({ kw, password, sheet: data.sheet || fresh });
     } else if (status === 409) {
       setMsg("ACESSO NEGADO: TAL INDIVÍDUO JÁ POSSUI UMA FICHA VIRTUAL E É IMPOSSÍVEL DE SER RECRIADO SEM A EXCLUSÃO DA FICHA JÁ FEITA."); setMsgType("error");
     } else {
@@ -239,7 +296,7 @@ function LoginGate({ onUnlock }) {
     return (
       <div style={{ minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative", overflow: "hidden" }}>
         <MatrixRain />
-        {transitioning && <IrisTransition />}
+        {transitioning && <IrisTransition onDone={() => onUnlock(pendingUnlock.kw, pendingUnlock.password, pendingUnlock.sheet)} />}
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 520, border: "1px solid #1a3a1a", background: "rgba(4,10,4,0.92)", padding: 32 }}>
           <div style={{ textAlign: "center", marginBottom: 14 }}>
             <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" }}>IRIS COMPANY</div>
@@ -274,7 +331,7 @@ function LoginGate({ onUnlock }) {
   return (
     <div style={{ minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" }}>
       <MatrixRain />
-      {transitioning && <IrisTransition />}
+      {transitioning && <IrisTransition onDone={() => onUnlock(pendingUnlock.kw, pendingUnlock.password, pendingUnlock.sheet)} />}
       <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 500, border: "1px solid #1a3a1a", background: "rgba(5,15,5,0.85)", padding: 32 }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" }}>IRIS COMPANY</div>
@@ -461,7 +518,25 @@ function App() {
             <div style={{ flex: 1, minWidth: 220, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div><div className="u09-label">Nome do personagem</div><input className="u09-input" style={{ width: "100%" }} value={sheet.charName} onChange={(e) => setSheet((s) => ({ ...s, charName: e.target.value }))} placeholder="Nome" /></div>
               <div><div className="u09-label">Jogador</div><input className="u09-input" style={{ width: "100%" }} value={sheet.playerName} onChange={(e) => setSheet((s) => ({ ...s, playerName: e.target.value }))} placeholder="Nome do jogador" /></div>
-              <div><div className="u09-label">Função / cargo</div><input className="u09-input" style={{ width: "100%" }} value={sheet.role} onChange={(e) => setSheet((s) => ({ ...s, role: e.target.value }))} placeholder="Ex: engenheira de campo" /></div>
+              <div>
+                <div className="u09-label">Função</div>
+                <select className="u09-input" style={{ width: "100%" }} value={sheet.funcao} onChange={(e) => setSheet((s) => ({ ...s, funcao: e.target.value, funcaoEspecialista: e.target.value === "Especialista" ? s.funcaoEspecialista : "" }))}>
+                  <option value="">Nenhuma</option>
+                  {Object.keys(FUNCOES).map((f) => (<option key={f} value={f}>{f}</option>))}
+                </select>
+                {sheet.funcao === "Especialista" && (
+                  <select className="u09-input" style={{ width: "100%", marginTop: 6 }} value={sheet.funcaoEspecialista} onChange={(e) => setSheet((s) => ({ ...s, funcaoEspecialista: e.target.value }))}>
+                    <option value="">Escolha a perícia</option>
+                    {ALL_SKILLS.map((sk) => (<option key={sk} value={sk}>{sk}</option>))}
+                  </select>
+                )}
+                {sheet.funcao && sheet.funcao !== "Especialista" && (
+                  <div style={{ fontSize: 11, color: "#e8c33d", marginTop: 4 }}>{Object.entries(FUNCOES[sheet.funcao]).map(([sk, v]) => `+${v} ${sk}`).join(" · ")}</div>
+                )}
+                {sheet.funcao === "Especialista" && sheet.funcaoEspecialista && (
+                  <div style={{ fontSize: 11, color: "#e8c33d", marginTop: 4 }}>+3 {sheet.funcaoEspecialista}</div>
+                )}
+              </div>
               <div><div className="u09-label">URL da foto</div><input className="u09-input" style={{ width: "100%" }} value={sheet.avatarUrl} onChange={(e) => setSheet((s) => ({ ...s, avatarUrl: e.target.value }))} placeholder="https://…" /></div>
             </div>
           </div>
@@ -489,27 +564,6 @@ function App() {
                       />
                     ))}
                   </div>
-                </div>
-                <div className="u09-card" style={{ padding: "8px 14px", minWidth: 230 }}>
-                  <div className="u09-label">Função</div>
-                  <select className="u09-input" style={{ width: "100%" }} value={sheet.funcao} onChange={(e) => setSheet((s) => ({ ...s, funcao: e.target.value, funcaoEspecialista: e.target.value === "Especialista" ? s.funcaoEspecialista : "" }))}>
-                    <option value="">Nenhuma</option>
-                    {Object.keys(FUNCOES).map((f) => (<option key={f} value={f}>{f}</option>))}
-                  </select>
-                  {sheet.funcao === "Especialista" && (
-                    <select className="u09-input" style={{ width: "100%", marginTop: 6 }} value={sheet.funcaoEspecialista} onChange={(e) => setSheet((s) => ({ ...s, funcaoEspecialista: e.target.value }))}>
-                      <option value="">Escolha a perícia</option>
-                      {ALL_SKILLS.map((sk) => (<option key={sk} value={sk}>{sk}</option>))}
-                    </select>
-                  )}
-                  {sheet.funcao && sheet.funcao !== "Especialista" && (
-                    <div style={{ fontSize: 11, color: "#e8c33d", marginTop: 6 }}>
-                      {Object.entries(FUNCOES[sheet.funcao]).map(([sk, v]) => `+${v} ${sk}`).join(" · ")}
-                    </div>
-                  )}
-                  {sheet.funcao === "Especialista" && sheet.funcaoEspecialista && (
-                    <div style={{ fontSize: 11, color: "#e8c33d", marginTop: 6 }}>+3 {sheet.funcaoEspecialista}</div>
-                  )}
                 </div>
               </div>
               {lastRoll && (
@@ -588,7 +642,7 @@ function App() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
                 {EQUIP_SLOTS.map((slot) => (
                   <div key={slot.key} className="u09-card" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>{slot.emoji}</span>
+                    <EquipIcon slotKey={slot.key} />
                     <div style={{ flex: 1 }}>
                       <div className="u09-label">{slot.label}</div>
                       <input className="u09-input" style={{ width: "100%", marginBottom: 4 }} placeholder="Vazio" value={sheet.equipment[slot.key].name} onChange={(e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], name: e.target.value } } }))} />
