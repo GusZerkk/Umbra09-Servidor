@@ -68,6 +68,8 @@ const BODY_PARTS = [
     { key: "pernaE", label: "Perna E", area: "pernaE" },
     { key: "pernaD", label: "Perna D", area: "pernaD" },
 ];
+const BASE_HP = { cabeca: 3, tronco: 10, bracoD: 7, bracoE: 7, pernaD: 7, pernaE: 7 };
+const TOTAL_BASE_HP = Object.values(BASE_HP).reduce((a, b) => a + b, 0);
 const EQUIP_ICONS = {
     capacete: "M4 18c0-5 3.6-9.2 8-9.2s8 4.2 8 9.2M3 18h18",
     camisa: "M8 3 4 7l2.5 3L8 9v11h8V9l1.5 1L20 7l-4-4-2 2h-4z",
@@ -112,7 +114,7 @@ function newSheet() {
         charName: "", playerName: "", role: "", avatarUrl: "",
         attrPool: 12, attrValues: Object.fromEntries(ATTRIBUTES.map((a) => [a.key, 0])),
         skillPool: 20, skillValues: emptySkillValues(),
-        pvPool: 30, pvMax: emptyBodyValues(0), pvCurrent: emptyBodyValues(0),
+        pvPool: 30, pvMax: emptyBodyValues(0), pvCurrent: { ...BASE_HP },
         caBase: 0, equipment: emptyEquipment(),
         inventory: [], abilities: [], background: "", diary: [],
         existencia: 0, trajetoria: 1, titulos: [], funcao: "", funcaoEspecialista: "",
@@ -389,7 +391,7 @@ function App() {
         const min = Math.min(...vals);
         return sum + (min >= 1 ? min : 0);
     }, 0);
-    const totalPVMax = pvSpent + bonusPV;
+    const totalPVMax = pvSpent + TOTAL_BASE_HP + bonusPV;
     const totalPVCurrent = Object.values(sheet.pvCurrent).reduce((a, b) => a + b, 0);
     const equipCA = Object.values(sheet.equipment).reduce((sum, e) => sum + (Number(e.ca) || 0), 0);
     const totalCA = (Number(sheet.caBase) || 0) + equipCA;
@@ -404,11 +406,15 @@ function App() {
             else
                 next = i + 1;
             let trajetoria = s.trajetoria;
+            let attrPool = s.attrPool, skillPool = s.skillPool, pvPool = s.pvPool;
             if (next >= 5) {
                 next = 0;
                 trajetoria += 1;
+                attrPool += 1;
+                skillPool += 2;
+                pvPool += 2;
             }
-            return { ...s, existencia: next, trajetoria };
+            return { ...s, existencia: next, trajetoria, attrPool, skillPool, pvPool };
         });
     }
     function addTitulo() {
@@ -451,18 +457,19 @@ function App() {
             if (delta > 0 && pvRemaining <= 0)
                 return s;
             const curVal = s.pvCurrent[key];
-            return { ...s, pvMax: { ...s.pvMax, [key]: next }, pvCurrent: { ...s.pvCurrent, [key]: Math.min(curVal, next) } };
+            const nextEffectiveMax = BASE_HP[key] + next;
+            return { ...s, pvMax: { ...s.pvMax, [key]: next }, pvCurrent: { ...s.pvCurrent, [key]: Math.min(curVal, nextEffectiveMax) } };
         });
     }
     function setPVCurrent(key, delta) {
         setSheet((s) => {
-            const max = s.pvMax[key];
+            const max = BASE_HP[key] + s.pvMax[key];
             const cur = s.pvCurrent[key];
             const next = clamp(cur + delta, 0, max);
             return { ...s, pvCurrent: { ...s.pvCurrent, [key]: next } };
         });
     }
-    function healAll() { setSheet((s) => ({ ...s, pvCurrent: { ...s.pvMax } })); }
+    function healAll() { setSheet((s) => ({ ...s, pvCurrent: Object.fromEntries(BODY_PARTS.map((p) => [p.key, BASE_HP[p.key] + s.pvMax[p.key]])) })); }
     function rollSkill(attrKey, attrLabel, skillName) {
         const roll = 1 + Math.floor(Math.random() * 20);
         const attrVal = sheet.attrValues[attrKey];
@@ -619,7 +626,7 @@ function App() {
                                 React.createElement("span", { className: "u09-mono u09-glow", style: { fontSize: 17, fontWeight: 700 } }, totalCA))),
                         React.createElement("button", { className: "u09-btn", onClick: healAll }, "\u2764 CURAR TUDO")),
                     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateAreas: `". cabeca ." "bracoE tronco bracoD" "pernaE . pernaD"`, gap: 10, maxWidth: 620, marginBottom: 24 } }, BODY_PARTS.map((p) => (React.createElement("div", { key: p.key, style: { gridArea: p.area } },
-                        React.createElement(BodyPart, { label: p.label, max: sheet.pvMax[p.key], current: sheet.pvCurrent[p.key], onMax: (d) => setPVMax(p.key, d), onCur: (d) => setPVCurrent(p.key, d) }))))),
+                        React.createElement(BodyPart, { label: p.label, base: BASE_HP[p.key], assigned: sheet.pvMax[p.key], current: sheet.pvCurrent[p.key], onMax: (d) => setPVMax(p.key, d), onCur: (d) => setPVCurrent(p.key, d) }))))),
                     React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Equipamento (fornece CA)"),
                     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 } }, EQUIP_SLOTS.map((slot) => (React.createElement("div", { key: slot.key, className: "u09-card", style: { display: "flex", alignItems: "center", gap: 10 } },
                         React.createElement(EquipIcon, { slotKey: slot.key }),
@@ -700,11 +707,18 @@ function PoolEditor({ label, pool, remaining, onChange }) {
                 React.createElement("span", { style: { color: remaining < 0 ? "#ff5a4d" : "#3ddc6b", fontWeight: 700 } }, remaining))),
         React.createElement("input", { className: "u09-input", type: "number", style: { width: 60 }, value: pool, onChange: (e) => onChange(Number(e.target.value) || 0) })));
 }
-function BodyPart({ label, max, current, onMax, onCur }) {
+function BodyPart({ label, base, assigned, current, onMax, onCur }) {
+    const max = base + assigned;
     const pct = max > 0 ? (current / max) * 100 : 0;
     const barColor = pct <= 30 ? "#ff5a4d" : pct <= 60 ? "#e8c33d" : "#3ddc6b";
     return (React.createElement("div", { className: "u09-card", style: { padding: "8px 10px" } },
-        React.createElement("div", { style: { fontSize: 12, fontWeight: 600, marginBottom: 4, color: "#a8e8ba" } }, label),
+        React.createElement("div", { style: { fontSize: 12, fontWeight: 600, marginBottom: 4, color: "#a8e8ba" } },
+            label,
+            " ",
+            React.createElement("span", { style: { color: "#2e7a44", fontWeight: 400 } },
+                "(base ",
+                base,
+                ")")),
         React.createElement("div", { style: { height: 5, background: "#0a160a", overflow: "hidden", marginBottom: 6 } },
             React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: barColor } })),
         React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 } },
