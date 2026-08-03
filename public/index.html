@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
   html, body { margin:0; padding:0; background:#040603; }
   #root { min-height:100vh; }
@@ -29,770 +28,698 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react">
+<script>
+"use strict";
 const { useState, useEffect, useCallback, useRef } = React;
-
 const ATTRIBUTES = [
-  { key: "forca", label: "FORÇA", skills: ["Atletismo", "Corpo a Corpo", "Resistência"] },
-  { key: "agilidade", label: "AGILIDADE", skills: ["Furtividade", "Pilotagem", "Reflexos", "Pontaria"] },
-  { key: "intelecto", label: "INTELECTO", skills: ["Engenharia", "Medicina", "Ciência", "Informática"] },
-  { key: "sentidos", label: "SENTIDOS", skills: ["Percepção", "Investigação", "Sobrevivência", "Análise"] },
-  { key: "coragem", label: "CORAGEM", skills: ["Intimidação", "Vontade", "Liderança", "Determinação"] },
-  { key: "carisma", label: "CARISMA", skills: ["Persuasão", "Enganação", "Bondade", "Artes"] },
+    { key: "forca", label: "FORÇA", skills: ["Atletismo", "Corpo a Corpo", "Resistência"] },
+    { key: "agilidade", label: "AGILIDADE", skills: ["Furtividade", "Pilotagem", "Reflexos", "Pontaria"] },
+    { key: "intelecto", label: "INTELECTO", skills: ["Engenharia", "Medicina", "Ciência", "Informática"] },
+    { key: "sentidos", label: "SENTIDOS", skills: ["Percepção", "Investigação", "Sobrevivência", "Análise"] },
+    { key: "coragem", label: "CORAGEM", skills: ["Intimidação", "Vontade", "Liderança", "Determinação"] },
+    { key: "carisma", label: "CARISMA", skills: ["Persuasão", "Enganação", "Bondade", "Artes"] },
 ];
-
 const ALL_SKILLS = ATTRIBUTES.flatMap((a) => a.skills);
-
 const FUNCOES = {
-  "Médico": { "Medicina": 3, "Ciência": 1 },
-  "Engenheiro": { "Engenharia": 5 },
-  "Cientista": { "Ciência": 3, "Investigação": 1 },
-  "Piloto": { "Pilotagem": 3, "Reflexos": 1 },
-  "Segurança": { "Corpo a Corpo": 2, "Pontaria": 2 },
-  "Explorador": { "Sobrevivência": 3, "Percepção": 1 },
-  "Pesquisador": { "Investigação": 2, "Ciência": 1, "Sobrevivência": 1 },
-  "Técnico": { "Engenharia": 2, "Informática": 1 },
-  "Diplomata": { "Persuasão": 2, "Bondade": 2 },
-  "Especialista": {},
+    "Médico": { "Medicina": 3, "Ciência": 1 },
+    "Engenheiro": { "Engenharia": 5 },
+    "Cientista": { "Ciência": 3, "Investigação": 1 },
+    "Piloto": { "Pilotagem": 3, "Reflexos": 1 },
+    "Segurança": { "Corpo a Corpo": 2, "Pontaria": 2 },
+    "Explorador": { "Sobrevivência": 3, "Percepção": 1 },
+    "Pesquisador": { "Investigação": 2, "Ciência": 1, "Sobrevivência": 1 },
+    "Técnico": { "Engenharia": 2, "Informática": 1 },
+    "Diplomata": { "Persuasão": 2, "Bondade": 2 },
+    "Especialista": {},
 };
-
 function getFuncaoBonus(sheet) {
-  if (!sheet.funcao || !FUNCOES[sheet.funcao]) return {};
-  if (sheet.funcao === "Especialista") {
-    return sheet.funcaoEspecialista ? { [sheet.funcaoEspecialista]: 3 } : {};
-  }
-  return FUNCOES[sheet.funcao];
+    if (!sheet.funcao || !FUNCOES[sheet.funcao])
+        return {};
+    if (sheet.funcao === "Especialista") {
+        return sheet.funcaoEspecialista ? { [sheet.funcaoEspecialista]: 3 } : {};
+    }
+    return FUNCOES[sheet.funcao];
 }
-
 const BODY_PARTS = [
-  { key: "cabeca", label: "Cabeça", area: "cabeca" },
-  { key: "bracoE", label: "Braço E", area: "bracoE" },
-  { key: "tronco", label: "Tronco", area: "tronco" },
-  { key: "bracoD", label: "Braço D", area: "bracoD" },
-  { key: "pernaE", label: "Perna E", area: "pernaE" },
-  { key: "pernaD", label: "Perna D", area: "pernaD" },
+    { key: "cabeca", label: "Cabeça", area: "cabeca" },
+    { key: "bracoE", label: "Braço E", area: "bracoE" },
+    { key: "tronco", label: "Tronco", area: "tronco" },
+    { key: "bracoD", label: "Braço D", area: "bracoD" },
+    { key: "pernaE", label: "Perna E", area: "pernaE" },
+    { key: "pernaD", label: "Perna D", area: "pernaD" },
 ];
-
 const EQUIP_ICONS = {
-  capacete: "M4 18c0-5 3.6-9.2 8-9.2s8 4.2 8 9.2M3 18h18",
-  camisa: "M8 3 4 7l2.5 3L8 9v11h8V9l1.5 1L20 7l-4-4-2 2h-4z",
-  calca: "M6 3h12l1 18h-4l-1-11-1 11H9l-1-11-1 11H3z",
-  calcado: "M7 2v9l-4.5 3.5C2 15 2 16 2 17v3h11v-4h6c1.6 0 3-1.3 3-3 0-1.6-1.3-3-3-3h-6V2z",
+    capacete: "M4 18c0-5 3.6-9.2 8-9.2s8 4.2 8 9.2M3 18h18",
+    camisa: "M8 3 4 7l2.5 3L8 9v11h8V9l1.5 1L20 7l-4-4-2 2h-4z",
+    calca: "M6 3h12l1 18h-4l-1-11-1 11H9l-1-11-1 11H3z",
+    calcado: "M7 2v9l-4.5 3.5C2 15 2 16 2 17v3h11v-4h6c1.6 0 3-1.3 3-3 0-1.6-1.3-3-3-3h-6V2z",
 };
 function EquipIcon({ slotKey }) {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3ddc6b" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
-      <path d={EQUIP_ICONS[slotKey]} />
-    </svg>
-  );
+    return (React.createElement("svg", { viewBox: "0 0 24 24", width: "20", height: "20", fill: "none", stroke: "#3ddc6b", strokeWidth: "1.5", strokeLinejoin: "round", strokeLinecap: "round" },
+        React.createElement("path", { d: EQUIP_ICONS[slotKey] })));
 }
-
 const EQUIP_SLOTS = [
-  { key: "capacete", label: "Capacete" },
-  { key: "camisa", label: "Camisa" },
-  { key: "calca", label: "Calça" },
-  { key: "calcado", label: "Calçado" },
+    { key: "capacete", label: "Capacete" },
+    { key: "camisa", label: "Camisa" },
+    { key: "calca", label: "Calça" },
+    { key: "calcado", label: "Calçado" },
 ];
-
 const TABS = [
-  { key: "ficha", label: "Ficha" },
-  { key: "vida", label: "Vida & equipamento" },
-  { key: "itens", label: "Inventário & habilidades" },
-  { key: "historia", label: "História & diário" },
+    { key: "ficha", label: "Ficha" },
+    { key: "vida", label: "Vida & equipamento" },
+    { key: "itens", label: "Inventário & habilidades" },
+    { key: "historia", label: "História & diário" },
 ];
-
 let uid = 0;
 const nextId = () => `id-${Date.now()}-${uid++}`;
-
 function emptySkillValues() {
-  const obj = {};
-  ATTRIBUTES.forEach((a) => a.skills.forEach((s) => (obj[s] = 0)));
-  return obj;
+    const obj = {};
+    ATTRIBUTES.forEach((a) => a.skills.forEach((s) => (obj[s] = 0)));
+    return obj;
 }
 function emptyBodyValues(v = 0) {
-  const obj = {};
-  BODY_PARTS.forEach((p) => (obj[p.key] = v));
-  return obj;
+    const obj = {};
+    BODY_PARTS.forEach((p) => (obj[p.key] = v));
+    return obj;
 }
 function emptyEquipment() {
-  const obj = {};
-  EQUIP_SLOTS.forEach((s) => (obj[s.key] = { name: "", ca: 0 }));
-  return obj;
+    const obj = {};
+    EQUIP_SLOTS.forEach((s) => (obj[s.key] = { name: "", ca: 0 }));
+    return obj;
 }
 function newSheet() {
-  return {
-    charName: "", playerName: "", role: "", avatarUrl: "",
-    attrPool: 12, attrValues: Object.fromEntries(ATTRIBUTES.map((a) => [a.key, 0])),
-    skillPool: 20, skillValues: emptySkillValues(),
-    pvPool: 30, pvMax: emptyBodyValues(0), pvCurrent: emptyBodyValues(0),
-    caBase: 0, equipment: emptyEquipment(),
-    inventory: [], abilities: [], background: "", diary: [],
-    existencia: 0, trajetoria: 1, titulos: [], funcao: "", funcaoEspecialista: "",
-  };
+    return {
+        charName: "", playerName: "", role: "", avatarUrl: "",
+        attrPool: 12, attrValues: Object.fromEntries(ATTRIBUTES.map((a) => [a.key, 0])),
+        skillPool: 20, skillValues: emptySkillValues(),
+        pvPool: 30, pvMax: emptyBodyValues(0), pvCurrent: emptyBodyValues(0),
+        caBase: 0, equipment: emptyEquipment(),
+        inventory: [], abilities: [], background: "", diary: [],
+        existencia: 0, trajetoria: 1, titulos: [], funcao: "", funcaoEspecialista: "",
+    };
 }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
-
 async function apiCall(path, body) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  let data = {};
-  try { data = await res.json(); } catch (e) {}
-  return { ok: res.ok, status: res.status, data };
+    const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    let data = {};
+    try {
+        data = await res.json();
+    }
+    catch (e) { }
+    return { ok: res.ok, status: res.status, data };
 }
-
 function MatrixRain() {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    const ctx = canvas.getContext("2d");
-    const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
-    const fontSize = 15;
-    let width, height, columns, drops, animId, frame = 0;
-    function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-      columns = Math.ceil(width / fontSize);
-      drops = Array.from({ length: columns }, () => Math.random() * (height / fontSize));
-    }
-    resize();
-    window.addEventListener("resize", resize);
-    function draw() {
-      frame++;
-      if (frame % 7 === 0) {
-        ctx.fillStyle = "rgba(4,6,3,0.09)";
-        ctx.fillRect(0, 0, width, height);
-        ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
-        for (let i = 0; i < columns; i++) {
-          const char = chars[Math.floor(Math.random() * chars.length)];
-          const y = drops[i] * fontSize;
-          ctx.fillStyle = Math.random() > 0.96 ? "#c8ffd9" : "#1f9b45";
-          ctx.fillText(char, i * fontSize, y);
-          if (y > height && Math.random() > 0.985) drops[i] = 0; else drops[i] += 1;
+    const canvasRef = useRef(null);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas)
+            return undefined;
+        const ctx = canvas.getContext("2d");
+        const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
+        const fontSize = 15;
+        let width, height, columns, drops, animId, frame = 0;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            columns = Math.ceil(width / fontSize);
+            drops = Array.from({ length: columns }, () => Math.random() * (height / fontSize));
         }
-      }
-      animId = requestAnimationFrame(draw);
-    }
-    draw();
-    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
-  }, []);
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "#040603" }} />;
+        resize();
+        window.addEventListener("resize", resize);
+        function draw() {
+            frame++;
+            if (frame % 7 === 0) {
+                ctx.fillStyle = "rgba(4,6,3,0.09)";
+                ctx.fillRect(0, 0, width, height);
+                ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+                for (let i = 0; i < columns; i++) {
+                    const char = chars[Math.floor(Math.random() * chars.length)];
+                    const y = drops[i] * fontSize;
+                    ctx.fillStyle = Math.random() > 0.96 ? "#c8ffd9" : "#1f9b45";
+                    ctx.fillText(char, i * fontSize, y);
+                    if (y > height && Math.random() > 0.985)
+                        drops[i] = 0;
+                    else
+                        drops[i] += 1;
+                }
+            }
+            animId = requestAnimationFrame(draw);
+        }
+        draw();
+        return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
+    }, []);
+    return React.createElement("canvas", { ref: canvasRef, style: { position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "#040603" } });
 }
-
 function IrisTransition({ onDone }) {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    const ctx = canvas.getContext("2d");
-    const w = (canvas.width = window.innerWidth);
-    const h = (canvas.height = window.innerHeight);
-    const cx = w / 2, cy = h / 2;
-    const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
-    const N = 160;
-    const particles = Array.from({ length: N }, () => ({
-      angle: Math.random() * Math.PI * 2,
-      radius: Math.max(w, h) * 0.6 * (0.35 + Math.random() * 0.75),
-      speed: 0.01 + Math.random() * 0.015,
-      char: chars[Math.floor(Math.random() * chars.length)],
-    }));
-    let start = null;
-    const DURATION = 1900;
-    let raf;
-    function frame(ts) {
-      if (!start) start = ts;
-      const t = Math.min(1, (ts - start) / DURATION);
-      const fadeOut = t > 0.82 ? (t - 0.82) / 0.18 : 0;
-      ctx.fillStyle = `rgba(4,6,3,${0.4 + fadeOut * 0.6})`;
-      ctx.fillRect(0, 0, w, h);
-
-      const ringR = (26 + 34 * (1 - t)) * (1 - fadeOut);
-      ctx.save();
-      ctx.strokeStyle = `rgba(125,255,160,${0.9 * (1 - fadeOut)})`;
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = "#3ddc6b";
-      ctx.shadowBlur = 30;
-      ctx.beginPath();
-      ctx.arc(cx, cy, Math.max(2, ringR), 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.font = "16px 'Share Tech Mono', monospace";
-      particles.forEach((p) => {
-        p.angle += p.speed * (1 + t * 9);
-        p.radius *= 1 - (0.006 + t * 0.028);
-        const x = cx + Math.cos(p.angle) * p.radius;
-        const y = cy + Math.sin(p.angle) * p.radius * 0.55;
-        ctx.globalAlpha = Math.max(0, (1 - fadeOut) * Math.min(1, p.radius / 40));
-        ctx.fillStyle = Math.random() > 0.9 ? "#c8ffd9" : "#3ddc6b";
-        ctx.fillText(p.char, x, y);
-      });
-      ctx.globalAlpha = 1;
-
-      if (t < 1) raf = requestAnimationFrame(frame);
-      else onDone && onDone();
-    }
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none" }} />;
+    const canvasRef = useRef(null);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas)
+            return undefined;
+        const ctx = canvas.getContext("2d");
+        const w = (canvas.width = window.innerWidth);
+        const h = (canvas.height = window.innerHeight);
+        const cx = w / 2, cy = h / 2;
+        const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
+        const N = 160;
+        const particles = Array.from({ length: N }, () => ({
+            angle: Math.random() * Math.PI * 2,
+            radius: Math.max(w, h) * 0.6 * (0.35 + Math.random() * 0.75),
+            speed: 0.01 + Math.random() * 0.015,
+            char: chars[Math.floor(Math.random() * chars.length)],
+        }));
+        let start = null;
+        const DURATION = 1900;
+        let raf;
+        function frame(ts) {
+            if (!start)
+                start = ts;
+            const t = Math.min(1, (ts - start) / DURATION);
+            const fadeOut = t > 0.82 ? (t - 0.82) / 0.18 : 0;
+            ctx.fillStyle = `rgba(4,6,3,${0.4 + fadeOut * 0.6})`;
+            ctx.fillRect(0, 0, w, h);
+            const ringR = (26 + 34 * (1 - t)) * (1 - fadeOut);
+            ctx.save();
+            ctx.strokeStyle = `rgba(125,255,160,${0.9 * (1 - fadeOut)})`;
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = "#3ddc6b";
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(cx, cy, Math.max(2, ringR), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            ctx.font = "16px 'Share Tech Mono', monospace";
+            particles.forEach((p) => {
+                p.angle += p.speed * (1 + t * 9);
+                p.radius *= 1 - (0.006 + t * 0.028);
+                const x = cx + Math.cos(p.angle) * p.radius;
+                const y = cy + Math.sin(p.angle) * p.radius * 0.55;
+                ctx.globalAlpha = Math.max(0, (1 - fadeOut) * Math.min(1, p.radius / 40));
+                ctx.fillStyle = Math.random() > 0.9 ? "#c8ffd9" : "#3ddc6b";
+                ctx.fillText(p.char, x, y);
+            });
+            ctx.globalAlpha = 1;
+            if (t < 1)
+                raf = requestAnimationFrame(frame);
+            else
+                onDone && onDone();
+        }
+        raf = requestAnimationFrame(frame);
+        return () => cancelAnimationFrame(raf);
+    }, []);
+    return React.createElement("canvas", { ref: canvasRef, style: { position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none" } });
 }
-
 function LoginGate({ onUnlock }) {
-  const [mode, setMode] = useState("login");
-  const [keyword, setKeyword] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [msgType, setMsgType] = useState("info");
-  const [transitioning, setTransitioning] = useState(false);
-  const [pendingUnlock, setPendingUnlock] = useState(null);
-
-  function switchMode(next) { setMode(next); setKeyword(""); setPassword(""); setMsg(""); setMsgType("info"); }
-
-  async function handleLogin(e) {
-    e.preventDefault();
-    const kw = keyword.trim().toLowerCase();
-    if (!kw || !password) { setMsg("PREENCHA PALAVRA-CHAVE E SENHA."); setMsgType("error"); return; }
-    setBusy(true); setMsg("BUSCANDO ARQUIVO…"); setMsgType("info");
-    const { ok, status, data } = await apiCall("/api/localizar", { keyword: kw, password });
-    if (ok) {
-      setMsg("ACESSO CONCEDIDO."); setMsgType("ok"); setTransitioning(true);
-      setPendingUnlock({ kw, password, sheet: data.sheet });
-    } else if (status === 404) {
-      setMsg("ARQUIVO NÃO ENCONTRADO. VERIFIQUE A PALAVRA-CHAVE OU CRIE UM NOVO REGISTRO ABAIXO."); setMsgType("error");
-    } else if (status === 401) {
-      setMsg("SENHA INCORRETA. ACESSO NEGADO."); setMsgType("error");
-    } else {
-      setMsg("FALHA DE CONEXÃO COM O SERVIDOR. TENTE NOVAMENTE."); setMsgType("error");
+    const [mode, setMode] = useState("login");
+    const [keyword, setKeyword] = useState("");
+    const [password, setPassword] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState("");
+    const [msgType, setMsgType] = useState("info");
+    const [transitioning, setTransitioning] = useState(false);
+    const [pendingUnlock, setPendingUnlock] = useState(null);
+    function switchMode(next) { setMode(next); setKeyword(""); setPassword(""); setMsg(""); setMsgType("info"); }
+    async function handleLogin(e) {
+        e.preventDefault();
+        const kw = keyword.trim().toLowerCase();
+        if (!kw || !password) {
+            setMsg("PREENCHA PALAVRA-CHAVE E SENHA.");
+            setMsgType("error");
+            return;
+        }
+        setBusy(true);
+        setMsg("BUSCANDO ARQUIVO…");
+        setMsgType("info");
+        const { ok, status, data } = await apiCall("/api/localizar", { keyword: kw, password });
+        if (ok) {
+            setMsg("ACESSO CONCEDIDO.");
+            setMsgType("ok");
+            setTransitioning(true);
+            setPendingUnlock({ kw, password, sheet: data.sheet });
+        }
+        else if (status === 404) {
+            setMsg("ARQUIVO NÃO ENCONTRADO. VERIFIQUE A PALAVRA-CHAVE OU CRIE UM NOVO REGISTRO ABAIXO.");
+            setMsgType("error");
+        }
+        else if (status === 401) {
+            setMsg("SENHA INCORRETA. ACESSO NEGADO.");
+            setMsgType("error");
+        }
+        else {
+            setMsg("FALHA DE CONEXÃO COM O SERVIDOR. TENTE NOVAMENTE.");
+            setMsgType("error");
+        }
+        setBusy(false);
     }
-    setBusy(false);
-  }
-
-  async function handleCreate(e) {
-    e.preventDefault();
-    const kw = keyword.trim().toLowerCase();
-    if (!kw || !password) { setMsg("PREENCHA PALAVRA-CHAVE E SENHA PARA O NOVO REGISTRO."); setMsgType("error"); return; }
-    setBusy(true); setMsg("REGISTRANDO…"); setMsgType("info");
-    const fresh = newSheet();
-    const { ok, status, data } = await apiCall("/api/criar", { keyword: kw, password, sheet: fresh });
-    if (ok) {
-      setMsg("FICHA REGISTRADA. ACESSANDO…"); setMsgType("ok"); setTransitioning(true);
-      setPendingUnlock({ kw, password, sheet: data.sheet || fresh });
-    } else if (status === 409) {
-      setMsg("ACESSO NEGADO: TAL INDIVÍDUO JÁ POSSUI UMA FICHA VIRTUAL E É IMPOSSÍVEL DE SER RECRIADO SEM A EXCLUSÃO DA FICHA JÁ FEITA."); setMsgType("error");
-    } else {
-      setMsg("FALHA AO REGISTRAR. TENTE NOVAMENTE."); setMsgType("error");
+    async function handleCreate(e) {
+        e.preventDefault();
+        const kw = keyword.trim().toLowerCase();
+        if (!kw || !password) {
+            setMsg("PREENCHA PALAVRA-CHAVE E SENHA PARA O NOVO REGISTRO.");
+            setMsgType("error");
+            return;
+        }
+        setBusy(true);
+        setMsg("REGISTRANDO…");
+        setMsgType("info");
+        const fresh = newSheet();
+        const { ok, status, data } = await apiCall("/api/criar", { keyword: kw, password, sheet: fresh });
+        if (ok) {
+            setMsg("FICHA REGISTRADA. ACESSANDO…");
+            setMsgType("ok");
+            setTransitioning(true);
+            setPendingUnlock({ kw, password, sheet: data.sheet || fresh });
+        }
+        else if (status === 409) {
+            setMsg("ACESSO NEGADO: TAL INDIVÍDUO JÁ POSSUI UMA FICHA VIRTUAL E É IMPOSSÍVEL DE SER RECRIADO SEM A EXCLUSÃO DA FICHA JÁ FEITA.");
+            setMsgType("error");
+        }
+        else {
+            setMsg("FALHA AO REGISTRAR. TENTE NOVAMENTE.");
+            setMsgType("error");
+        }
+        setBusy(false);
     }
-    setBusy(false);
-  }
-
-  const msgColor = msgType === "error" ? "#ff5a4d" : msgType === "ok" ? "#7dffa0" : "#3ddc6b";
-
-  if (mode === "create") {
-    return (
-      <div style={{ minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative", overflow: "hidden" }}>
-        <MatrixRain />
-        {transitioning && <IrisTransition onDone={() => onUnlock(pendingUnlock.kw, pendingUnlock.password, pendingUnlock.sheet)} />}
-        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 520, border: "1px solid #1a3a1a", background: "rgba(4,10,4,0.92)", padding: 32 }}>
-          <div style={{ textAlign: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" }}>IRIS COMPANY</div>
-            <div style={{ fontSize: 10, letterSpacing: "0.15em", color: "#1a6b32", marginTop: 2 }}>NOTIFICAÇÃO DE NOVA FICHA ELETRÔNICA</div>
-          </div>
-          <div style={{ border: "1px solid #5c2323", background: "rgba(30,8,8,0.5)", padding: "10px 12px", marginBottom: 10, fontSize: 11, lineHeight: 1.6, color: "#ff9a8f" }}>
-            AVISO DA EMPRESA: por norma da empresa, é necessário informar que criar uma ficha falsa resulta em multa de 500.000 créditos.
-          </div>
-          <div style={{ border: "1px solid #5c2323", background: "rgba(30,8,8,0.5)", padding: "10px 12px", marginBottom: 18, fontSize: 11, lineHeight: 1.6, color: "#ff9a8f" }}>
-            AVISO DA EMPRESA: por norma da empresa, também é necessário notificar que isso conta como um contrato de utilização de suas informações pessoais. Ao criar uma ficha, não será possível qualquer tentativa de uso de leis de direitos autorais — previsto no artigo 184 do Código Penal (Decreto-Lei nº 2.848/1940).
-          </div>
-          <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" }}>NOVA PALAVRA-CHAVE</div>
-              <input value={keyword} onChange={(e) => setKeyword(e.target.value)} style={termInput} autoComplete="off" placeholder="ex: tyr-07" />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" }}>NOVA SENHA</div>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={termInput} autoComplete="off" />
-            </div>
-            <button type="submit" disabled={busy} style={termBtn}>🔒 {busy ? "PROCESSANDO…" : "CRIAR FICHA"}</button>
-          </form>
-          {msg && <div style={{ marginTop: 14, fontSize: 11, letterSpacing: "0.04em", color: msgColor, lineHeight: 1.5 }}>&gt; {msg}</div>}
-          <button onClick={() => switchMode("login")} style={{ ...termBtn, marginTop: 16, background: "transparent", borderColor: "#235c2f", width: "100%", justifyContent: "center" }}>
-            VOLTAR PARA LOCALIZAR ARQUIVO
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" }}>
-      <MatrixRain />
-      {transitioning && <IrisTransition onDone={() => onUnlock(pendingUnlock.kw, pendingUnlock.password, pendingUnlock.sheet)} />}
-      <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 500, border: "1px solid #1a3a1a", background: "rgba(5,15,5,0.85)", padding: 32 }}>
-        <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" }}>IRIS COMPANY</div>
-          <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#1a6b32", marginTop: 2 }}>SISTEMA OPERACIONAL — MODULO DE ARQUIVOS</div>
-        </div>
-        <div style={{ borderTop: "1px solid #1a3a1a", borderBottom: "1px solid #1a3a1a", padding: "12px 0", marginBottom: 18, fontSize: 12, lineHeight: 1.6, color: "#2ec95c" }}>
-          &gt; Por favor use a palavra-chave e senha para<br />
-          &gt; localizar a ficha eletrônica do indivíduo.
-        </div>
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" }}>PALAVRA-CHAVE</div>
-            <input value={keyword} onChange={(e) => setKeyword(e.target.value)} style={termInput} autoComplete="off" placeholder="ex: tyr-07" />
-          </div>
-          <div>
-            <div style={{ fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" }}>SENHA</div>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={termInput} autoComplete="off" />
-          </div>
-          <button type="submit" disabled={busy} style={termBtn}>🔒 {busy ? "PROCESSANDO…" : "LOCALIZAR ARQUIVO"}</button>
-        </form>
-        {msg && <div style={{ marginTop: 14, fontSize: 11, letterSpacing: "0.04em", color: msgColor, lineHeight: 1.5 }}>&gt; {msg}</div>}
-        <div style={{ marginTop: 22, borderTop: "1px solid #1a3a1a", paddingTop: 14, fontSize: 11, lineHeight: 1.6, color: "#2e7a44" }}>
-          Caso queira criar uma nova ficha eletrônica para um indivíduo desconhecido pelo sistema, aperte abaixo em notificar nova ficha. Lembre que toda nova ficha encontrada deverá ter uma palavra-chave e uma senha próprias.
-        </div>
-        <button onClick={() => switchMode("create")} style={{ ...termBtn, marginTop: 10, width: "100%", justifyContent: "center" }}>NOTIFICAR NOVA FICHA</button>
-      </div>
-    </div>
-  );
+    const msgColor = msgType === "error" ? "#ff5a4d" : msgType === "ok" ? "#7dffa0" : "#3ddc6b";
+    if (mode === "create") {
+        return (React.createElement("div", { style: { minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative", overflow: "hidden" } },
+            React.createElement(MatrixRain, null),
+            transitioning && React.createElement(IrisTransition, { onDone: () => onUnlock(pendingUnlock.kw, pendingUnlock.password, pendingUnlock.sheet) }),
+            React.createElement("div", { style: { position: "relative", zIndex: 1, width: "100%", maxWidth: 520, border: "1px solid #1a3a1a", background: "rgba(4,10,4,0.92)", padding: 32 } },
+                React.createElement("div", { style: { textAlign: "center", marginBottom: 14 } },
+                    React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" } }, "IRIS COMPANY"),
+                    React.createElement("div", { style: { fontSize: 10, letterSpacing: "0.15em", color: "#1a6b32", marginTop: 2 } }, "NOTIFICA\u00C7\u00C3O DE NOVA FICHA ELETR\u00D4NICA")),
+                React.createElement("div", { style: { border: "1px solid #5c2323", background: "rgba(30,8,8,0.5)", padding: "10px 12px", marginBottom: 10, fontSize: 11, lineHeight: 1.6, color: "#ff9a8f" } }, "AVISO DA EMPRESA: por norma da empresa, \u00E9 necess\u00E1rio informar que criar uma ficha falsa resulta em multa de 500.000 cr\u00E9ditos."),
+                React.createElement("div", { style: { border: "1px solid #5c2323", background: "rgba(30,8,8,0.5)", padding: "10px 12px", marginBottom: 18, fontSize: 11, lineHeight: 1.6, color: "#ff9a8f" } }, "AVISO DA EMPRESA: por norma da empresa, tamb\u00E9m \u00E9 necess\u00E1rio notificar que isso conta como um contrato de utiliza\u00E7\u00E3o de suas informa\u00E7\u00F5es pessoais. Ao criar uma ficha, n\u00E3o ser\u00E1 poss\u00EDvel qualquer tentativa de uso de leis de direitos autorais \u2014 previsto no artigo 184 do C\u00F3digo Penal (Decreto-Lei n\u00BA 2.848/1940)."),
+                React.createElement("form", { onSubmit: handleCreate, style: { display: "flex", flexDirection: "column", gap: 12 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" } }, "NOVA PALAVRA-CHAVE"),
+                        React.createElement("input", { value: keyword, onChange: (e) => setKeyword(e.target.value), style: termInput, autoComplete: "off", placeholder: "ex: tyr-07" })),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" } }, "NOVA SENHA"),
+                        React.createElement("input", { type: "password", value: password, onChange: (e) => setPassword(e.target.value), style: termInput, autoComplete: "off" })),
+                    React.createElement("button", { type: "submit", disabled: busy, style: termBtn },
+                        "\uD83D\uDD12 ",
+                        busy ? "PROCESSANDO…" : "CRIAR FICHA")),
+                msg && React.createElement("div", { style: { marginTop: 14, fontSize: 11, letterSpacing: "0.04em", color: msgColor, lineHeight: 1.5 } },
+                    "> ",
+                    msg),
+                React.createElement("button", { onClick: () => switchMode("login"), style: { ...termBtn, marginTop: 16, background: "transparent", borderColor: "#235c2f", width: "100%", justifyContent: "center" } }, "VOLTAR PARA LOCALIZAR ARQUIVO"))));
+    }
+    return (React.createElement("div", { style: { minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" } },
+        React.createElement(MatrixRain, null),
+        transitioning && React.createElement(IrisTransition, { onDone: () => onUnlock(pendingUnlock.kw, pendingUnlock.password, pendingUnlock.sheet) }),
+        React.createElement("div", { style: { position: "relative", zIndex: 1, width: "100%", maxWidth: 500, border: "1px solid #1a3a1a", background: "rgba(5,15,5,0.85)", padding: 32 } },
+            React.createElement("div", { style: { textAlign: "center", marginBottom: 18 } },
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" } }, "IRIS COMPANY"),
+                React.createElement("div", { style: { fontSize: 10, letterSpacing: "0.2em", color: "#1a6b32", marginTop: 2 } }, "SISTEMA OPERACIONAL \u2014 MODULO DE ARQUIVOS")),
+            React.createElement("div", { style: { borderTop: "1px solid #1a3a1a", borderBottom: "1px solid #1a3a1a", padding: "12px 0", marginBottom: 18, fontSize: 12, lineHeight: 1.6, color: "#2ec95c" } },
+                "> Por favor use a palavra-chave e senha para",
+                React.createElement("br", null),
+                "> localizar a ficha eletr\u00F4nica do indiv\u00EDduo."),
+            React.createElement("form", { onSubmit: handleLogin, style: { display: "flex", flexDirection: "column", gap: 12 } },
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" } }, "PALAVRA-CHAVE"),
+                    React.createElement("input", { value: keyword, onChange: (e) => setKeyword(e.target.value), style: termInput, autoComplete: "off", placeholder: "ex: tyr-07" })),
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 13, letterSpacing: "0.15em", marginBottom: 6, color: "#2ec95c" } }, "SENHA"),
+                    React.createElement("input", { type: "password", value: password, onChange: (e) => setPassword(e.target.value), style: termInput, autoComplete: "off" })),
+                React.createElement("button", { type: "submit", disabled: busy, style: termBtn },
+                    "\uD83D\uDD12 ",
+                    busy ? "PROCESSANDO…" : "LOCALIZAR ARQUIVO")),
+            msg && React.createElement("div", { style: { marginTop: 14, fontSize: 11, letterSpacing: "0.04em", color: msgColor, lineHeight: 1.5 } },
+                "> ",
+                msg),
+            React.createElement("div", { style: { marginTop: 22, borderTop: "1px solid #1a3a1a", paddingTop: 14, fontSize: 11, lineHeight: 1.6, color: "#2e7a44" } }, "Caso queira criar uma nova ficha eletr\u00F4nica para um indiv\u00EDduo desconhecido pelo sistema, aperte abaixo em notificar nova ficha. Lembre que toda nova ficha encontrada dever\u00E1 ter uma palavra-chave e uma senha pr\u00F3prias."),
+            React.createElement("button", { onClick: () => switchMode("create"), style: { ...termBtn, marginTop: 10, width: "100%", justifyContent: "center" } }, "NOTIFICAR NOVA FICHA"))));
 }
-
 const termInput = { width: "100%", background: "#050c05", border: "1px solid #235c2f", color: "#7dffa0", padding: "14px 16px", fontFamily: "'Share Tech Mono','Roboto Mono',monospace", fontSize: 20, letterSpacing: "0.05em" };
 const termBtn = { background: "#0d1f0d", border: "1px solid #3ddc6b", color: "#7dffa0", padding: "13px 14px", fontFamily: "'Share Tech Mono',monospace", letterSpacing: "0.1em", fontSize: 14, cursor: "pointer", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
-
 function App() {
-  const [unlocked, setUnlocked] = useState(false);
-  const [keyword, setKeyword] = useState("");
-  const [password, setPassword] = useState("");
-  const [sheet, setSheet] = useState(newSheet());
-  const [activeTab, setActiveTab] = useState("ficha");
-  const [status, setStatus] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [lastRoll, setLastRoll] = useState(null);
-  const [invDraft, setInvDraft] = useState({ name: "", qty: 1, note: "" });
-  const [abilDraft, setAbilDraft] = useState({ name: "", desc: "" });
-  const [diaryDraft, setDiaryDraft] = useState("");
-  const [tituloDraft, setTituloDraft] = useState("");
-
-  function handleUnlock(kw, pw, loadedSheet) {
-    setKeyword(kw); setPassword(pw); setSheet({ ...newSheet(), ...loadedSheet }); setUnlocked(true);
-  }
-
-  const attrSpent = Object.values(sheet.attrValues).reduce((a, b) => a + b, 0);
-  const attrRemaining = sheet.attrPool - attrSpent;
-  const skillSpent = Object.values(sheet.skillValues).reduce((a, b) => a + b, 0);
-  const skillRemaining = sheet.skillPool - skillSpent;
-  const pvSpent = Object.values(sheet.pvMax).reduce((a, b) => a + b, 0);
-  const pvRemaining = sheet.pvPool - pvSpent;
-  const bonusPV = ATTRIBUTES.reduce((sum, a) => {
-    const vals = a.skills.map((s) => sheet.skillValues[s]);
-    const min = Math.min(...vals);
-    return sum + (min >= 1 ? min : 0);
-  }, 0);
-  const totalPVMax = pvSpent + bonusPV;
-  const totalPVCurrent = Object.values(sheet.pvCurrent).reduce((a, b) => a + b, 0);
-  const equipCA = Object.values(sheet.equipment).reduce((sum, e) => sum + (Number(e.ca) || 0), 0);
-  const totalCA = (Number(sheet.caBase) || 0) + equipCA;
-  const funcaoBonus = getFuncaoBonus(sheet);
-
-  function toggleExistencia(i) {
-    setSheet((s) => {
-      let next;
-      if (i < s.existencia - 1) next = i + 1;
-      else if (i === s.existencia - 1) next = i;
-      else next = i + 1;
-      let trajetoria = s.trajetoria;
-      if (next >= 5) { next = 0; trajetoria += 1; }
-      return { ...s, existencia: next, trajetoria };
-    });
-  }
-  function addTitulo() {
-    if (!tituloDraft.trim()) return;
-    setSheet((s) => ({ ...s, titulos: [...s.titulos, { id: nextId(), text: tituloDraft }] }));
-    setTituloDraft("");
-  }
-  function removeTitulo(id) {
-    setSheet((s) => ({ ...s, titulos: s.titulos.filter((t) => t.id !== id) }));
-  }
-
-  function setAttr(key, delta) {
-    setSheet((s) => {
-      const cur = s.attrValues[key]; const next = clamp(cur + delta, 0, 20);
-      if (next === cur) return s;
-      if (delta > 0 && attrRemaining <= 0) return s;
-      return { ...s, attrValues: { ...s.attrValues, [key]: next } };
-    });
-  }
-  function setSkill(name, delta) {
-    setSheet((s) => {
-      const cur = s.skillValues[name]; const next = clamp(cur + delta, 0, 20);
-      if (next === cur) return s;
-      if (delta > 0 && skillRemaining <= 0) return s;
-      return { ...s, skillValues: { ...s.skillValues, [name]: next } };
-    });
-  }
-  function setPVMax(key, delta) {
-    setSheet((s) => {
-      const cur = s.pvMax[key]; const next = clamp(cur + delta, 0, 30);
-      if (next === cur) return s;
-      if (delta > 0 && pvRemaining <= 0) return s;
-      const curVal = s.pvCurrent[key];
-      return { ...s, pvMax: { ...s.pvMax, [key]: next }, pvCurrent: { ...s.pvCurrent, [key]: Math.min(curVal, next) } };
-    });
-  }
-  function setPVCurrent(key, delta) {
-    setSheet((s) => {
-      const max = s.pvMax[key]; const cur = s.pvCurrent[key]; const next = clamp(cur + delta, 0, max);
-      return { ...s, pvCurrent: { ...s.pvCurrent, [key]: next } };
-    });
-  }
-  function healAll() { setSheet((s) => ({ ...s, pvCurrent: { ...s.pvMax } })); }
-
-  function rollSkill(attrKey, attrLabel, skillName) {
-    const roll = 1 + Math.floor(Math.random() * 20);
-    const attrVal = sheet.attrValues[attrKey];
-    const bonus = funcaoBonus[skillName] || 0;
-    const skillVal = sheet.skillValues[skillName] + bonus;
-    const total = roll + attrVal + skillVal;
-    setLastRoll({ skillName, attrLabel, roll, attrVal, skillVal, total, id: nextId() });
-  }
-
-  function addInventoryItem() {
-    if (!invDraft.name.trim()) return;
-    setSheet((s) => ({ ...s, inventory: [...s.inventory, { id: nextId(), ...invDraft, qty: Number(invDraft.qty) || 1 }] }));
-    setInvDraft({ name: "", qty: 1, note: "" });
-  }
-  function removeInventoryItem(id) { setSheet((s) => ({ ...s, inventory: s.inventory.filter((i) => i.id !== id) })); }
-  function addAbility() {
-    if (!abilDraft.name.trim()) return;
-    setSheet((s) => ({ ...s, abilities: [...s.abilities, { id: nextId(), ...abilDraft }] }));
-    setAbilDraft({ name: "", desc: "" });
-  }
-  function removeAbility(id) { setSheet((s) => ({ ...s, abilities: s.abilities.filter((a) => a.id !== id) })); }
-  function addDiaryEntry() {
-    if (!diaryDraft.trim()) return;
-    const date = new Date().toLocaleDateString("pt-BR");
-    setSheet((s) => ({ ...s, diary: [{ id: nextId(), date, text: diaryDraft }, ...s.diary] }));
-    setDiaryDraft("");
-  }
-  function removeDiaryEntry(id) { setSheet((s) => ({ ...s, diary: s.diary.filter((d) => d.id !== id) })); }
-
-  async function saveSheet() {
-    setBusy(true);
-    const { ok } = await apiCall("/api/salvar", { keyword, password, sheet });
-    setStatus(ok ? "ARQUIVO GRAVADO." : "FALHA AO GRAVAR. TENTE NOVAMENTE.");
-    setBusy(false);
-  }
-
-  function logout() { setUnlocked(false); setKeyword(""); setPassword(""); setSheet(newSheet()); setStatus(""); }
-
-  if (!unlocked) return <LoginGate onUnlock={handleUnlock} />;
-
-  return (
-    <div style={{ fontFamily: "'Share Tech Mono','Roboto Mono',monospace", color: "#7dffa0", minHeight: "100vh", position: "relative" }}>
-      <MatrixRain />
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <div style={{ borderBottom: "1px solid #1a3a1a", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 18 }}>🖥</span>
-          <div className="u09-glow" style={{ fontWeight: 600, fontSize: 15, letterSpacing: "0.1em" }}>
-            IRIS COMPANY <span style={{ color: "#2e7a44", fontSize: 11 }}>/ ARQUIVO: {keyword.toUpperCase()}</span>
-          </div>
-          <div style={{ flex: 1 }} />
-          <button className="u09-btn" onClick={saveSheet} disabled={busy}>💾 GRAVAR</button>
-          <button className="u09-btn" onClick={logout}>🔒 ENCERRAR SESSÃO</button>
-        </div>
-        {status && <div className="u09-mono" style={{ padding: "6px 20px", fontSize: 11, color: "#3ddc6b", borderBottom: "1px solid #1a3a1a" }}>&gt; {status}</div>}
-
-        <div style={{ padding: 20, maxWidth: 980, margin: "0 auto" }}>
-          <div className="u09-card" style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
-            <div style={{ width: 84, height: 84, background: "#0a160a", border: "1px solid #235c2f", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {sheet.avatarUrl ? (
-                <img src={sheet.avatarUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(40%) sepia(20%) hue-rotate(60deg)" }} />
-              ) : (<span style={{ fontSize: 28, color: "#235c2f" }}>◈</span>)}
-            </div>
-            <div style={{ flex: 1, minWidth: 220, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div><div className="u09-label">Nome do personagem</div><input className="u09-input" style={{ width: "100%" }} value={sheet.charName} onChange={(e) => setSheet((s) => ({ ...s, charName: e.target.value }))} placeholder="Nome" /></div>
-              <div><div className="u09-label">Jogador</div><input className="u09-input" style={{ width: "100%" }} value={sheet.playerName} onChange={(e) => setSheet((s) => ({ ...s, playerName: e.target.value }))} placeholder="Nome do jogador" /></div>
-              <div>
-                <div className="u09-label">Função</div>
-                <select className="u09-input" style={{ width: "100%" }} value={sheet.funcao} onChange={(e) => setSheet((s) => ({ ...s, funcao: e.target.value, funcaoEspecialista: e.target.value === "Especialista" ? s.funcaoEspecialista : "" }))}>
-                  <option value="">Nenhuma</option>
-                  {Object.keys(FUNCOES).map((f) => (<option key={f} value={f}>{f}</option>))}
-                </select>
-                {sheet.funcao === "Especialista" && (
-                  <select className="u09-input" style={{ width: "100%", marginTop: 6 }} value={sheet.funcaoEspecialista} onChange={(e) => setSheet((s) => ({ ...s, funcaoEspecialista: e.target.value }))}>
-                    <option value="">Escolha a perícia</option>
-                    {ALL_SKILLS.map((sk) => (<option key={sk} value={sk}>{sk}</option>))}
-                  </select>
-                )}
-                {sheet.funcao && sheet.funcao !== "Especialista" && (
-                  <div style={{ fontSize: 11, color: "#e8c33d", marginTop: 4 }}>{Object.entries(FUNCOES[sheet.funcao]).map(([sk, v]) => `+${v} ${sk}`).join(" · ")}</div>
-                )}
-                {sheet.funcao === "Especialista" && sheet.funcaoEspecialista && (
-                  <div style={{ fontSize: 11, color: "#e8c33d", marginTop: 4 }}>+3 {sheet.funcaoEspecialista}</div>
-                )}
-              </div>
-              <div><div className="u09-label">URL da foto</div><input className="u09-input" style={{ width: "100%" }} value={sheet.avatarUrl} onChange={(e) => setSheet((s) => ({ ...s, avatarUrl: e.target.value }))} placeholder="https://…" /></div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1a3a1a", marginBottom: 20, flexWrap: "wrap" }}>
-            {TABS.map((t) => (<div key={t.key} className={`u09-tab ${activeTab === t.key ? "active" : ""}`} onClick={() => setActiveTab(t.key)}>{t.label}</div>))}
-          </div>
-
-          {activeTab === "ficha" && (
-            <div>
-              <div style={{ display: "flex", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
-                <PoolEditor label="Pontos de atributo" pool={sheet.attrPool} remaining={attrRemaining} onChange={(v) => setSheet((s) => ({ ...s, attrPool: v }))} />
-                <PoolEditor label="Pontos de perícia" pool={sheet.skillPool} remaining={skillRemaining} onChange={(v) => setSheet((s) => ({ ...s, skillPool: v }))} />
-                <div className="u09-card" style={{ padding: "8px 14px" }}>
-                  <div className="u09-label">Trajetória (nível)</div>
-                  <div className="u09-mono u09-glow" style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{sheet.trajetoria}</div>
-                  <div className="u09-label">Existência</div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        onClick={() => toggleExistencia(i)}
-                        title="Ponto de existência"
-                        style={{ width: 16, height: 16, borderRadius: "50%", border: "1px solid #3ddc6b", cursor: "pointer", background: i < sheet.existencia ? "#3ddc6b" : "transparent" }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {lastRoll && (
-                <div className="u09-card u09-mono" style={{ marginBottom: 16, borderColor: "#3ddc6b", display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <span>🎲</span>
-                  <span style={{ color: "#2e7a44" }}>{lastRoll.attrLabel} · {lastRoll.skillName}</span>
-                  <span>1d20({lastRoll.roll}) + {lastRoll.attrVal} + {lastRoll.skillVal} =</span>
-                  <span className="u09-glow" style={{ fontSize: 18, fontWeight: 700 }}>{lastRoll.total}</span>
-                </div>
-              )}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
-                {ATTRIBUTES.map((a) => (
-                  <div key={a.key} className="u09-card">
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <div style={{ fontWeight: 600, letterSpacing: "0.08em", fontSize: 13 }}>{a.label}</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div className="u09-stepper" onClick={() => setAttr(a.key, -1)}>−</div>
-                        <div className="u09-mono u09-glow" style={{ width: 26, textAlign: "center", fontSize: 16, fontWeight: 600 }}>{sheet.attrValues[a.key]}</div>
-                        <div className="u09-stepper" onClick={() => setAttr(a.key, 1)}>+</div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {a.skills.map((s) => {
-                        const bonus = funcaoBonus[s] || 0;
-                        return (
-                        <div key={s} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                          <span style={{ fontSize: 12, color: "#a8e8ba" }}>{s}{bonus > 0 && <span style={{ color: "#e8c33d" }}> (+{bonus})</span>}</span>
-                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                            <div className="u09-stepper" style={{ width: 18, height: 18 }} onClick={() => setSkill(s, -1)}>−</div>
-                            <div className="u09-mono" style={{ width: 18, textAlign: "center", fontSize: 12 }}>{sheet.skillValues[s]}</div>
-                            <div className="u09-stepper" style={{ width: 18, height: 18 }} onClick={() => setSkill(s, 1)}>+</div>
-                            <div className="u09-stepper" style={{ width: 18, height: 18, color: "#e8c33d", borderColor: "#5c5223" }} onClick={() => rollSkill(a.key, a.label, s)} title="Rolar">🎲</div>
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "vida" && (
-            <div>
-              <div style={{ display: "flex", gap: 20, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-                <PoolEditor label="Pontos de vida (distribuição)" pool={sheet.pvPool} remaining={pvRemaining} onChange={(v) => setSheet((s) => ({ ...s, pvPool: v }))} />
-                <div className="u09-card" style={{ padding: "8px 14px" }}><div className="u09-label">Bônus de sinergia</div><div className="u09-mono" style={{ fontSize: 17, color: "#e8c33d", fontWeight: 700 }}>+{bonusPV} PV</div></div>
-                <div className="u09-card" style={{ padding: "8px 14px" }}>
-                  <div className="u09-label">PV total</div>
-                  <div className="u09-mono" style={{ fontSize: 17, fontWeight: 700 }}>
-                    <span style={{ color: totalPVCurrent <= totalPVMax * 0.3 ? "#ff5a4d" : "#7dffa0" }}>{totalPVCurrent}</span>
-                    <span style={{ color: "#2e7a44" }}> / {totalPVMax}</span>
-                  </div>
-                </div>
-                <div className="u09-card" style={{ padding: "8px 14px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span>🛡</span><div className="u09-label">CA</div></div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input className="u09-input u09-mono" type="number" style={{ width: 46, fontSize: 15 }} value={sheet.caBase} onChange={(e) => setSheet((s) => ({ ...s, caBase: Number(e.target.value) || 0 }))} />
-                    <span style={{ color: "#2e7a44", fontSize: 11 }}>base +{equipCA} equip =</span>
-                    <span className="u09-mono u09-glow" style={{ fontSize: 17, fontWeight: 700 }}>{totalCA}</span>
-                  </div>
-                </div>
-                <button className="u09-btn" onClick={healAll}>❤ CURAR TUDO</button>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateAreas: `". cabeca ." "bracoE tronco bracoD" "pernaE . pernaD"`, gap: 10, maxWidth: 620, marginBottom: 24 }}>
-                {BODY_PARTS.map((p) => (
-                  <div key={p.key} style={{ gridArea: p.area }}>
-                    <BodyPart label={p.label} max={sheet.pvMax[p.key]} current={sheet.pvCurrent[p.key]} onMax={(d) => setPVMax(p.key, d)} onCur={(d) => setPVCurrent(p.key, d)} />
-                  </div>
-                ))}
-              </div>
-
-              <div className="u09-label" style={{ marginBottom: 8 }}>Equipamento (fornece CA)</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
-                {EQUIP_SLOTS.map((slot) => (
-                  <div key={slot.key} className="u09-card" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <EquipIcon slotKey={slot.key} />
-                    <div style={{ flex: 1 }}>
-                      <div className="u09-label">{slot.label}</div>
-                      <input className="u09-input" style={{ width: "100%", marginBottom: 4 }} placeholder="Vazio" value={sheet.equipment[slot.key].name} onChange={(e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], name: e.target.value } } }))} />
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 10, color: "#2e7a44" }}>CA</span>
-                        <input className="u09-input u09-mono" type="number" style={{ width: 44 }} value={sheet.equipment[slot.key].ca} onChange={(e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], ca: Number(e.target.value) || 0 } } }))} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "itens" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <div>
-                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>🎒 Inventário</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-                  {sheet.inventory.map((it) => (
-                    <div key={it.id} className="u09-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px" }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{it.name} <span className="u09-mono" style={{ color: "#2e7a44" }}>x{it.qty}</span></div>
-                        {it.note && <div style={{ fontSize: 12, color: "#2e7a44" }}>{it.note}</div>}
-                      </div>
-                      <span style={{ cursor: "pointer", color: "#ff5a4d" }} onClick={() => removeInventoryItem(it.id)}>🗑</span>
-                    </div>
-                  ))}
-                  {sheet.inventory.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhum item ainda.</div>}
-                </div>
-                <div className="u09-card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <input className="u09-input" placeholder="Item" value={invDraft.name} onChange={(e) => setInvDraft((d) => ({ ...d, name: e.target.value }))} />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <input className="u09-input" type="number" min="1" style={{ width: 60 }} value={invDraft.qty} onChange={(e) => setInvDraft((d) => ({ ...d, qty: e.target.value }))} />
-                    <input className="u09-input" placeholder="Observação" style={{ flex: 1 }} value={invDraft.note} onChange={(e) => setInvDraft((d) => ({ ...d, note: e.target.value }))} />
-                  </div>
-                  <button className="u09-btn" onClick={addInventoryItem}>+ ADICIONAR ITEM</button>
-                </div>
-              </div>
-              <div>
-                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>✨ Habilidades especiais</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-                  {sheet.abilities.map((ab) => (
-                    <div key={ab.id} className="u09-card" style={{ padding: "8px 10px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{ab.name}</div>
-                        <span style={{ cursor: "pointer", color: "#ff5a4d", flexShrink: 0 }} onClick={() => removeAbility(ab.id)}>🗑</span>
-                      </div>
-                      {ab.desc && <div style={{ fontSize: 12, color: "#2e7a44", marginTop: 4 }}>{ab.desc}</div>}
-                    </div>
-                  ))}
-                  {sheet.abilities.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhuma habilidade ainda.</div>}
-                </div>
-                <div className="u09-card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <input className="u09-input" placeholder="Nome da habilidade" value={abilDraft.name} onChange={(e) => setAbilDraft((d) => ({ ...d, name: e.target.value }))} />
-                  <textarea className="u09-input" rows={2} placeholder="Descrição" value={abilDraft.desc} onChange={(e) => setAbilDraft((d) => ({ ...d, desc: e.target.value }))} />
-                  <button className="u09-btn" onClick={addAbility}>+ ADICIONAR HABILIDADE</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "historia" && (
-            <div>
-              <div className="u09-card" style={{ marginBottom: 16 }}>
-                <div className="u09-label" style={{ marginBottom: 8 }}>Títulos</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                  {sheet.titulos.map((t) => (
-                    <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid #235c2f", padding: "4px 10px", fontSize: 12 }}>
-                      <span>{t.text}</span>
-                      <span style={{ cursor: "pointer", color: "#ff5a4d" }} onClick={() => removeTitulo(t.id)}>×</span>
-                    </div>
-                  ))}
-                  {sheet.titulos.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhum título ainda.</div>}
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input className="u09-input" style={{ flex: 1 }} placeholder="Novo título" value={tituloDraft} onChange={(e) => setTituloDraft(e.target.value)} />
-                  <button className="u09-btn" onClick={addTitulo}>+ ADICIONAR</button>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <div>
-                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>📖 Histórico</div>
-                <textarea className="u09-input" style={{ width: "100%", minHeight: 320 }} placeholder="Origem, motivações, eventos marcantes do personagem…" value={sheet.background} onChange={(e) => setSheet((s) => ({ ...s, background: e.target.value }))} />
-              </div>
-              <div>
-                <div className="u09-label" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>📓 Diário</div>
-                <div className="u09-card" style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-                  <textarea className="u09-input" rows={3} placeholder="Nova anotação…" value={diaryDraft} onChange={(e) => setDiaryDraft(e.target.value)} />
-                  <button className="u09-btn" onClick={addDiaryEntry}>+ ADICIONAR ANOTAÇÃO</button>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
-                  {sheet.diary.map((d) => (
-                    <div key={d.id} className="u09-card" style={{ padding: "8px 10px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span className="u09-mono" style={{ fontSize: 11, color: "#2e7a44" }}>{d.date}</span>
-                        <span style={{ cursor: "pointer", color: "#ff5a4d" }} onClick={() => removeDiaryEntry(d.id)}>🗑</span>
-                      </div>
-                      <div style={{ fontSize: 13, marginTop: 4, whiteSpace: "pre-wrap" }}>{d.text}</div>
-                    </div>
-                  ))}
-                  {sheet.diary.length === 0 && <div style={{ fontSize: 12, color: "#1a3a1a" }}>Nenhuma anotação ainda.</div>}
-                </div>
-              </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    const [unlocked, setUnlocked] = useState(false);
+    const [keyword, setKeyword] = useState("");
+    const [password, setPassword] = useState("");
+    const [sheet, setSheet] = useState(newSheet());
+    const [activeTab, setActiveTab] = useState("ficha");
+    const [status, setStatus] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [lastRoll, setLastRoll] = useState(null);
+    const [invDraft, setInvDraft] = useState({ name: "", qty: 1, note: "" });
+    const [abilDraft, setAbilDraft] = useState({ name: "", desc: "" });
+    const [diaryDraft, setDiaryDraft] = useState("");
+    const [tituloDraft, setTituloDraft] = useState("");
+    function handleUnlock(kw, pw, loadedSheet) {
+        setKeyword(kw);
+        setPassword(pw);
+        setSheet({ ...newSheet(), ...loadedSheet });
+        setUnlocked(true);
+    }
+    const attrSpent = Object.values(sheet.attrValues).reduce((a, b) => a + b, 0);
+    const attrRemaining = sheet.attrPool - attrSpent;
+    const skillSpent = Object.values(sheet.skillValues).reduce((a, b) => a + b, 0);
+    const skillRemaining = sheet.skillPool - skillSpent;
+    const pvSpent = Object.values(sheet.pvMax).reduce((a, b) => a + b, 0);
+    const pvRemaining = sheet.pvPool - pvSpent;
+    const bonusPV = ATTRIBUTES.reduce((sum, a) => {
+        const vals = a.skills.map((s) => sheet.skillValues[s]);
+        const min = Math.min(...vals);
+        return sum + (min >= 1 ? min : 0);
+    }, 0);
+    const totalPVMax = pvSpent + bonusPV;
+    const totalPVCurrent = Object.values(sheet.pvCurrent).reduce((a, b) => a + b, 0);
+    const equipCA = Object.values(sheet.equipment).reduce((sum, e) => sum + (Number(e.ca) || 0), 0);
+    const totalCA = (Number(sheet.caBase) || 0) + equipCA;
+    const funcaoBonus = getFuncaoBonus(sheet);
+    function toggleExistencia(i) {
+        setSheet((s) => {
+            let next;
+            if (i < s.existencia - 1)
+                next = i + 1;
+            else if (i === s.existencia - 1)
+                next = i;
+            else
+                next = i + 1;
+            let trajetoria = s.trajetoria;
+            if (next >= 5) {
+                next = 0;
+                trajetoria += 1;
+            }
+            return { ...s, existencia: next, trajetoria };
+        });
+    }
+    function addTitulo() {
+        if (!tituloDraft.trim())
+            return;
+        setSheet((s) => ({ ...s, titulos: [...s.titulos, { id: nextId(), text: tituloDraft }] }));
+        setTituloDraft("");
+    }
+    function removeTitulo(id) {
+        setSheet((s) => ({ ...s, titulos: s.titulos.filter((t) => t.id !== id) }));
+    }
+    function setAttr(key, delta) {
+        setSheet((s) => {
+            const cur = s.attrValues[key];
+            const next = clamp(cur + delta, 0, 20);
+            if (next === cur)
+                return s;
+            if (delta > 0 && attrRemaining <= 0)
+                return s;
+            return { ...s, attrValues: { ...s.attrValues, [key]: next } };
+        });
+    }
+    function setSkill(name, delta) {
+        setSheet((s) => {
+            const cur = s.skillValues[name];
+            const next = clamp(cur + delta, 0, 20);
+            if (next === cur)
+                return s;
+            if (delta > 0 && skillRemaining <= 0)
+                return s;
+            return { ...s, skillValues: { ...s.skillValues, [name]: next } };
+        });
+    }
+    function setPVMax(key, delta) {
+        setSheet((s) => {
+            const cur = s.pvMax[key];
+            const next = clamp(cur + delta, 0, 30);
+            if (next === cur)
+                return s;
+            if (delta > 0 && pvRemaining <= 0)
+                return s;
+            const curVal = s.pvCurrent[key];
+            return { ...s, pvMax: { ...s.pvMax, [key]: next }, pvCurrent: { ...s.pvCurrent, [key]: Math.min(curVal, next) } };
+        });
+    }
+    function setPVCurrent(key, delta) {
+        setSheet((s) => {
+            const max = s.pvMax[key];
+            const cur = s.pvCurrent[key];
+            const next = clamp(cur + delta, 0, max);
+            return { ...s, pvCurrent: { ...s.pvCurrent, [key]: next } };
+        });
+    }
+    function healAll() { setSheet((s) => ({ ...s, pvCurrent: { ...s.pvMax } })); }
+    function rollSkill(attrKey, attrLabel, skillName) {
+        const roll = 1 + Math.floor(Math.random() * 20);
+        const attrVal = sheet.attrValues[attrKey];
+        const bonus = funcaoBonus[skillName] || 0;
+        const skillVal = sheet.skillValues[skillName] + bonus;
+        const total = roll + attrVal + skillVal;
+        setLastRoll({ skillName, attrLabel, roll, attrVal, skillVal, total, id: nextId() });
+    }
+    function addInventoryItem() {
+        if (!invDraft.name.trim())
+            return;
+        setSheet((s) => ({ ...s, inventory: [...s.inventory, { id: nextId(), ...invDraft, qty: Number(invDraft.qty) || 1 }] }));
+        setInvDraft({ name: "", qty: 1, note: "" });
+    }
+    function removeInventoryItem(id) { setSheet((s) => ({ ...s, inventory: s.inventory.filter((i) => i.id !== id) })); }
+    function addAbility() {
+        if (!abilDraft.name.trim())
+            return;
+        setSheet((s) => ({ ...s, abilities: [...s.abilities, { id: nextId(), ...abilDraft }] }));
+        setAbilDraft({ name: "", desc: "" });
+    }
+    function removeAbility(id) { setSheet((s) => ({ ...s, abilities: s.abilities.filter((a) => a.id !== id) })); }
+    function addDiaryEntry() {
+        if (!diaryDraft.trim())
+            return;
+        const date = new Date().toLocaleDateString("pt-BR");
+        setSheet((s) => ({ ...s, diary: [{ id: nextId(), date, text: diaryDraft }, ...s.diary] }));
+        setDiaryDraft("");
+    }
+    function removeDiaryEntry(id) { setSheet((s) => ({ ...s, diary: s.diary.filter((d) => d.id !== id) })); }
+    async function saveSheet() {
+        setBusy(true);
+        const { ok } = await apiCall("/api/salvar", { keyword, password, sheet });
+        setStatus(ok ? "ARQUIVO GRAVADO." : "FALHA AO GRAVAR. TENTE NOVAMENTE.");
+        setBusy(false);
+    }
+    function logout() { setUnlocked(false); setKeyword(""); setPassword(""); setSheet(newSheet()); setStatus(""); }
+    if (!unlocked)
+        return React.createElement(LoginGate, { onUnlock: handleUnlock });
+    return (React.createElement("div", { style: { fontFamily: "'Share Tech Mono','Roboto Mono',monospace", color: "#7dffa0", minHeight: "100vh", position: "relative" } },
+        React.createElement(MatrixRain, null),
+        React.createElement("div", { style: { position: "relative", zIndex: 2 } },
+            React.createElement("div", { style: { borderBottom: "1px solid #1a3a1a", padding: "12px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } },
+                React.createElement("span", { style: { fontSize: 18 } }, "\uD83D\uDDA5"),
+                React.createElement("div", { className: "u09-glow", style: { fontWeight: 600, fontSize: 15, letterSpacing: "0.1em" } },
+                    "IRIS COMPANY ",
+                    React.createElement("span", { style: { color: "#2e7a44", fontSize: 11 } },
+                        "/ ARQUIVO: ",
+                        keyword.toUpperCase())),
+                React.createElement("div", { style: { flex: 1 } }),
+                React.createElement("button", { className: "u09-btn", onClick: saveSheet, disabled: busy }, "\uD83D\uDCBE GRAVAR"),
+                React.createElement("button", { className: "u09-btn", onClick: logout }, "\uD83D\uDD12 ENCERRAR SESS\u00C3O")),
+            status && React.createElement("div", { className: "u09-mono", style: { padding: "6px 20px", fontSize: 11, color: "#3ddc6b", borderBottom: "1px solid #1a3a1a" } },
+                "> ",
+                status),
+            React.createElement("div", { style: { padding: 20, maxWidth: 980, margin: "0 auto" } },
+                React.createElement("div", { className: "u09-card", style: { display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 } },
+                    React.createElement("div", { style: { width: 84, height: 84, background: "#0a160a", border: "1px solid #235c2f", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, sheet.avatarUrl ? (React.createElement("img", { src: sheet.avatarUrl, alt: "avatar", style: { width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(40%) sepia(20%) hue-rotate(60deg)" } })) : (React.createElement("span", { style: { fontSize: 28, color: "#235c2f" } }, "\u25C8"))),
+                    React.createElement("div", { style: { flex: 1, minWidth: 220, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "u09-label" }, "Nome do personagem"),
+                            React.createElement("input", { className: "u09-input", style: { width: "100%" }, value: sheet.charName, onChange: (e) => setSheet((s) => ({ ...s, charName: e.target.value })), placeholder: "Nome" })),
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "u09-label" }, "Jogador"),
+                            React.createElement("input", { className: "u09-input", style: { width: "100%" }, value: sheet.playerName, onChange: (e) => setSheet((s) => ({ ...s, playerName: e.target.value })), placeholder: "Nome do jogador" })),
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "u09-label" }, "Fun\u00E7\u00E3o"),
+                            React.createElement("select", { className: "u09-input", style: { width: "100%" }, value: sheet.funcao, onChange: (e) => setSheet((s) => ({ ...s, funcao: e.target.value, funcaoEspecialista: e.target.value === "Especialista" ? s.funcaoEspecialista : "" })) },
+                                React.createElement("option", { value: "" }, "Nenhuma"),
+                                Object.keys(FUNCOES).map((f) => (React.createElement("option", { key: f, value: f }, f)))),
+                            sheet.funcao === "Especialista" && (React.createElement("select", { className: "u09-input", style: { width: "100%", marginTop: 6 }, value: sheet.funcaoEspecialista, onChange: (e) => setSheet((s) => ({ ...s, funcaoEspecialista: e.target.value })) },
+                                React.createElement("option", { value: "" }, "Escolha a per\u00EDcia"),
+                                ALL_SKILLS.map((sk) => (React.createElement("option", { key: sk, value: sk }, sk))))),
+                            sheet.funcao && sheet.funcao !== "Especialista" && (React.createElement("div", { style: { fontSize: 11, color: "#e8c33d", marginTop: 4 } }, Object.entries(FUNCOES[sheet.funcao]).map(([sk, v]) => `+${v} ${sk}`).join(" · "))),
+                            sheet.funcao === "Especialista" && sheet.funcaoEspecialista && (React.createElement("div", { style: { fontSize: 11, color: "#e8c33d", marginTop: 4 } },
+                                "+3 ",
+                                sheet.funcaoEspecialista))),
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "u09-label" }, "URL da foto"),
+                            React.createElement("input", { className: "u09-input", style: { width: "100%" }, value: sheet.avatarUrl, onChange: (e) => setSheet((s) => ({ ...s, avatarUrl: e.target.value })), placeholder: "https://\u2026" })))),
+                React.createElement("div", { style: { display: "flex", gap: 4, borderBottom: "1px solid #1a3a1a", marginBottom: 20, flexWrap: "wrap" } }, TABS.map((t) => (React.createElement("div", { key: t.key, className: `u09-tab ${activeTab === t.key ? "active" : ""}`, onClick: () => setActiveTab(t.key) }, t.label)))),
+                activeTab === "ficha" && (React.createElement("div", null,
+                    React.createElement("div", { style: { display: "flex", gap: 24, marginBottom: 16, flexWrap: "wrap" } },
+                        React.createElement(PoolEditor, { label: "Pontos de atributo", pool: sheet.attrPool, remaining: attrRemaining, onChange: (v) => setSheet((s) => ({ ...s, attrPool: v })) }),
+                        React.createElement(PoolEditor, { label: "Pontos de per\u00EDcia", pool: sheet.skillPool, remaining: skillRemaining, onChange: (v) => setSheet((s) => ({ ...s, skillPool: v })) }),
+                        React.createElement("div", { className: "u09-card", style: { padding: "8px 14px" } },
+                            React.createElement("div", { className: "u09-label" }, "Trajet\u00F3ria (n\u00EDvel)"),
+                            React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 22, fontWeight: 700, marginBottom: 6 } }, sheet.trajetoria),
+                            React.createElement("div", { className: "u09-label" }, "Exist\u00EAncia"),
+                            React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 4 } }, [0, 1, 2, 3, 4].map((i) => (React.createElement("div", { key: i, onClick: () => toggleExistencia(i), title: "Ponto de exist\u00EAncia", style: { width: 16, height: 16, borderRadius: "50%", border: "1px solid #3ddc6b", cursor: "pointer", background: i < sheet.existencia ? "#3ddc6b" : "transparent" } })))))),
+                    lastRoll && (React.createElement("div", { className: "u09-card u09-mono", style: { marginBottom: 16, borderColor: "#3ddc6b", display: "flex", alignItems: "center", gap: 10, fontSize: 13 } },
+                        React.createElement("span", null, "\uD83C\uDFB2"),
+                        React.createElement("span", { style: { color: "#2e7a44" } },
+                            lastRoll.attrLabel,
+                            " \u00B7 ",
+                            lastRoll.skillName),
+                        React.createElement("span", null,
+                            "1d20(",
+                            lastRoll.roll,
+                            ") + ",
+                            lastRoll.attrVal,
+                            " + ",
+                            lastRoll.skillVal,
+                            " ="),
+                        React.createElement("span", { className: "u09-glow", style: { fontSize: 18, fontWeight: 700 } }, lastRoll.total))),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 } }, ATTRIBUTES.map((a) => (React.createElement("div", { key: a.key, className: "u09-card" },
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
+                            React.createElement("div", { style: { fontWeight: 600, letterSpacing: "0.08em", fontSize: 13 } }, a.label),
+                            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+                                React.createElement("div", { className: "u09-stepper", onClick: () => setAttr(a.key, -1) }, "\u2212"),
+                                React.createElement("div", { className: "u09-mono u09-glow", style: { width: 26, textAlign: "center", fontSize: 16, fontWeight: 600 } }, sheet.attrValues[a.key]),
+                                React.createElement("div", { className: "u09-stepper", onClick: () => setAttr(a.key, 1) }, "+"))),
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, a.skills.map((s) => {
+                            const bonus = funcaoBonus[s] || 0;
+                            return (React.createElement("div", { key: s, style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 } },
+                                React.createElement("span", { style: { fontSize: 12, color: "#a8e8ba" } },
+                                    s,
+                                    bonus > 0 && React.createElement("span", { style: { color: "#e8c33d" } },
+                                        " (+",
+                                        bonus,
+                                        ")")),
+                                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5 } },
+                                    React.createElement("div", { className: "u09-stepper", style: { width: 18, height: 18 }, onClick: () => setSkill(s, -1) }, "\u2212"),
+                                    React.createElement("div", { className: "u09-mono", style: { width: 18, textAlign: "center", fontSize: 12 } }, sheet.skillValues[s]),
+                                    React.createElement("div", { className: "u09-stepper", style: { width: 18, height: 18 }, onClick: () => setSkill(s, 1) }, "+"),
+                                    React.createElement("div", { className: "u09-stepper", style: { width: 18, height: 18, color: "#e8c33d", borderColor: "#5c5223" }, onClick: () => rollSkill(a.key, a.label, s), title: "Rolar" }, "\uD83C\uDFB2"))));
+                        })))))))),
+                activeTab === "vida" && (React.createElement("div", null,
+                    React.createElement("div", { style: { display: "flex", gap: 20, marginBottom: 16, flexWrap: "wrap", alignItems: "center" } },
+                        React.createElement(PoolEditor, { label: "Pontos de vida (distribui\u00E7\u00E3o)", pool: sheet.pvPool, remaining: pvRemaining, onChange: (v) => setSheet((s) => ({ ...s, pvPool: v })) }),
+                        React.createElement("div", { className: "u09-card", style: { padding: "8px 14px" } },
+                            React.createElement("div", { className: "u09-label" }, "B\u00F4nus de sinergia"),
+                            React.createElement("div", { className: "u09-mono", style: { fontSize: 17, color: "#e8c33d", fontWeight: 700 } },
+                                "+",
+                                bonusPV,
+                                " PV")),
+                        React.createElement("div", { className: "u09-card", style: { padding: "8px 14px" } },
+                            React.createElement("div", { className: "u09-label" }, "PV total"),
+                            React.createElement("div", { className: "u09-mono", style: { fontSize: 17, fontWeight: 700 } },
+                                React.createElement("span", { style: { color: totalPVCurrent <= totalPVMax * 0.3 ? "#ff5a4d" : "#7dffa0" } }, totalPVCurrent),
+                                React.createElement("span", { style: { color: "#2e7a44" } },
+                                    " / ",
+                                    totalPVMax))),
+                        React.createElement("div", { className: "u09-card", style: { padding: "8px 14px" } },
+                            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+                                React.createElement("span", null, "\uD83D\uDEE1"),
+                                React.createElement("div", { className: "u09-label" }, "CA")),
+                            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                                React.createElement("input", { className: "u09-input u09-mono", type: "number", style: { width: 46, fontSize: 15 }, value: sheet.caBase, onChange: (e) => setSheet((s) => ({ ...s, caBase: Number(e.target.value) || 0 })) }),
+                                React.createElement("span", { style: { color: "#2e7a44", fontSize: 11 } },
+                                    "base +",
+                                    equipCA,
+                                    " equip ="),
+                                React.createElement("span", { className: "u09-mono u09-glow", style: { fontSize: 17, fontWeight: 700 } }, totalCA))),
+                        React.createElement("button", { className: "u09-btn", onClick: healAll }, "\u2764 CURAR TUDO")),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateAreas: `". cabeca ." "bracoE tronco bracoD" "pernaE . pernaD"`, gap: 10, maxWidth: 620, marginBottom: 24 } }, BODY_PARTS.map((p) => (React.createElement("div", { key: p.key, style: { gridArea: p.area } },
+                        React.createElement(BodyPart, { label: p.label, max: sheet.pvMax[p.key], current: sheet.pvCurrent[p.key], onMax: (d) => setPVMax(p.key, d), onCur: (d) => setPVCurrent(p.key, d) }))))),
+                    React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Equipamento (fornece CA)"),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 } }, EQUIP_SLOTS.map((slot) => (React.createElement("div", { key: slot.key, className: "u09-card", style: { display: "flex", alignItems: "center", gap: 10 } },
+                        React.createElement(EquipIcon, { slotKey: slot.key }),
+                        React.createElement("div", { style: { flex: 1 } },
+                            React.createElement("div", { className: "u09-label" }, slot.label),
+                            React.createElement("input", { className: "u09-input", style: { width: "100%", marginBottom: 4 }, placeholder: "Vazio", value: sheet.equipment[slot.key].name, onChange: (e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], name: e.target.value } } })) }),
+                            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+                                React.createElement("span", { style: { fontSize: 10, color: "#2e7a44" } }, "CA"),
+                                React.createElement("input", { className: "u09-input u09-mono", type: "number", style: { width: 44 }, value: sheet.equipment[slot.key].ca, onChange: (e) => setSheet((s) => ({ ...s, equipment: { ...s.equipment, [slot.key]: { ...s.equipment[slot.key], ca: Number(e.target.value) || 0 } } })) }))))))))),
+                activeTab === "itens" && (React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "u09-label", style: { marginBottom: 8, display: "flex", alignItems: "center", gap: 6 } }, "\uD83C\uDF92 Invent\u00E1rio"),
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 } },
+                            sheet.inventory.map((it) => (React.createElement("div", { key: it.id, className: "u09-card", style: { display: "flex", alignItems: "center", gap: 10, padding: "8px 10px" } },
+                                React.createElement("div", { style: { flex: 1 } },
+                                    React.createElement("div", { style: { fontWeight: 600, fontSize: 13 } },
+                                        it.name,
+                                        " ",
+                                        React.createElement("span", { className: "u09-mono", style: { color: "#2e7a44" } },
+                                            "x",
+                                            it.qty)),
+                                    it.note && React.createElement("div", { style: { fontSize: 12, color: "#2e7a44" } }, it.note)),
+                                React.createElement("span", { style: { cursor: "pointer", color: "#ff5a4d" }, onClick: () => removeInventoryItem(it.id) }, "\uD83D\uDDD1")))),
+                            sheet.inventory.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhum item ainda.")),
+                        React.createElement("div", { className: "u09-card", style: { display: "flex", flexDirection: "column", gap: 6 } },
+                            React.createElement("input", { className: "u09-input", placeholder: "Item", value: invDraft.name, onChange: (e) => setInvDraft((d) => ({ ...d, name: e.target.value })) }),
+                            React.createElement("div", { style: { display: "flex", gap: 6 } },
+                                React.createElement("input", { className: "u09-input", type: "number", min: "1", style: { width: 60 }, value: invDraft.qty, onChange: (e) => setInvDraft((d) => ({ ...d, qty: e.target.value })) }),
+                                React.createElement("input", { className: "u09-input", placeholder: "Observa\u00E7\u00E3o", style: { flex: 1 }, value: invDraft.note, onChange: (e) => setInvDraft((d) => ({ ...d, note: e.target.value })) })),
+                            React.createElement("button", { className: "u09-btn", onClick: addInventoryItem }, "+ ADICIONAR ITEM"))),
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "u09-label", style: { marginBottom: 8, display: "flex", alignItems: "center", gap: 6 } }, "\u2728 Habilidades especiais"),
+                        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 } },
+                            sheet.abilities.map((ab) => (React.createElement("div", { key: ab.id, className: "u09-card", style: { padding: "8px 10px" } },
+                                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } },
+                                    React.createElement("div", { style: { fontWeight: 600, fontSize: 13 } }, ab.name),
+                                    React.createElement("span", { style: { cursor: "pointer", color: "#ff5a4d", flexShrink: 0 }, onClick: () => removeAbility(ab.id) }, "\uD83D\uDDD1")),
+                                ab.desc && React.createElement("div", { style: { fontSize: 12, color: "#2e7a44", marginTop: 4 } }, ab.desc)))),
+                            sheet.abilities.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma habilidade ainda.")),
+                        React.createElement("div", { className: "u09-card", style: { display: "flex", flexDirection: "column", gap: 6 } },
+                            React.createElement("input", { className: "u09-input", placeholder: "Nome da habilidade", value: abilDraft.name, onChange: (e) => setAbilDraft((d) => ({ ...d, name: e.target.value })) }),
+                            React.createElement("textarea", { className: "u09-input", rows: 2, placeholder: "Descri\u00E7\u00E3o", value: abilDraft.desc, onChange: (e) => setAbilDraft((d) => ({ ...d, desc: e.target.value })) }),
+                            React.createElement("button", { className: "u09-btn", onClick: addAbility }, "+ ADICIONAR HABILIDADE"))))),
+                activeTab === "historia" && (React.createElement("div", null,
+                    React.createElement("div", { className: "u09-card", style: { marginBottom: 16 } },
+                        React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "T\u00EDtulos"),
+                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 } },
+                            sheet.titulos.map((t) => (React.createElement("div", { key: t.id, style: { display: "flex", alignItems: "center", gap: 6, border: "1px solid #235c2f", padding: "4px 10px", fontSize: 12 } },
+                                React.createElement("span", null, t.text),
+                                React.createElement("span", { style: { cursor: "pointer", color: "#ff5a4d" }, onClick: () => removeTitulo(t.id) }, "\u00D7")))),
+                            sheet.titulos.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhum t\u00EDtulo ainda.")),
+                        React.createElement("div", { style: { display: "flex", gap: 6 } },
+                            React.createElement("input", { className: "u09-input", style: { flex: 1 }, placeholder: "Novo t\u00EDtulo", value: tituloDraft, onChange: (e) => setTituloDraft(e.target.value) }),
+                            React.createElement("button", { className: "u09-btn", onClick: addTitulo }, "+ ADICIONAR"))),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 } },
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "u09-label", style: { marginBottom: 8, display: "flex", alignItems: "center", gap: 6 } }, "\uD83D\uDCD6 Hist\u00F3rico"),
+                            React.createElement("textarea", { className: "u09-input", style: { width: "100%", minHeight: 320 }, placeholder: "Origem, motiva\u00E7\u00F5es, eventos marcantes do personagem\u2026", value: sheet.background, onChange: (e) => setSheet((s) => ({ ...s, background: e.target.value })) })),
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "u09-label", style: { marginBottom: 8, display: "flex", alignItems: "center", gap: 6 } }, "\uD83D\uDCD3 Di\u00E1rio"),
+                            React.createElement("div", { className: "u09-card", style: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 } },
+                                React.createElement("textarea", { className: "u09-input", rows: 3, placeholder: "Nova anota\u00E7\u00E3o\u2026", value: diaryDraft, onChange: (e) => setDiaryDraft(e.target.value) }),
+                                React.createElement("button", { className: "u09-btn", onClick: addDiaryEntry }, "+ ADICIONAR ANOTA\u00C7\u00C3O")),
+                            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" } },
+                                sheet.diary.map((d) => (React.createElement("div", { key: d.id, className: "u09-card", style: { padding: "8px 10px" } },
+                                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                                        React.createElement("span", { className: "u09-mono", style: { fontSize: 11, color: "#2e7a44" } }, d.date),
+                                        React.createElement("span", { style: { cursor: "pointer", color: "#ff5a4d" }, onClick: () => removeDiaryEntry(d.id) }, "\uD83D\uDDD1")),
+                                    React.createElement("div", { style: { fontSize: 13, marginTop: 4, whiteSpace: "pre-wrap" } }, d.text)))),
+                                sheet.diary.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma anota\u00E7\u00E3o ainda."))))))))));
 }
-
 function PoolEditor({ label, pool, remaining, onChange }) {
-  return (
-    <div className="u09-card" style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-      <div>
-        <div className="u09-label">{label}</div>
-        <div className="u09-mono" style={{ fontSize: 13 }}>Disponíveis: <span style={{ color: remaining < 0 ? "#ff5a4d" : "#3ddc6b", fontWeight: 700 }}>{remaining}</span></div>
-      </div>
-      <input className="u09-input" type="number" style={{ width: 60 }} value={pool} onChange={(e) => onChange(Number(e.target.value) || 0)} />
-    </div>
-  );
+    return (React.createElement("div", { className: "u09-card", style: { padding: "8px 14px", display: "flex", alignItems: "center", gap: 12 } },
+        React.createElement("div", null,
+            React.createElement("div", { className: "u09-label" }, label),
+            React.createElement("div", { className: "u09-mono", style: { fontSize: 13 } },
+                "Dispon\u00EDveis: ",
+                React.createElement("span", { style: { color: remaining < 0 ? "#ff5a4d" : "#3ddc6b", fontWeight: 700 } }, remaining))),
+        React.createElement("input", { className: "u09-input", type: "number", style: { width: 60 }, value: pool, onChange: (e) => onChange(Number(e.target.value) || 0) })));
 }
 function BodyPart({ label, max, current, onMax, onCur }) {
-  const pct = max > 0 ? (current / max) * 100 : 0;
-  const barColor = pct <= 30 ? "#ff5a4d" : pct <= 60 ? "#e8c33d" : "#3ddc6b";
-  return (
-    <div className="u09-card" style={{ padding: "8px 10px" }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: "#a8e8ba" }}>{label}</div>
-      <div style={{ height: 5, background: "#0a160a", overflow: "hidden", marginBottom: 6 }}><div style={{ height: "100%", width: `${pct}%`, background: barColor }} /></div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span className="u09-label" style={{ marginRight: 2 }}>Máx</span>
-          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onMax(-1)}>−</div>
-          <span className="u09-mono">{max}</span>
-          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onMax(1)}>+</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span className="u09-label" style={{ marginRight: 2 }}>Atual</span>
-          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onCur(-1)}>−</div>
-          <span className="u09-mono">{current}</span>
-          <div className="u09-stepper" style={{ width: 16, height: 16 }} onClick={() => onCur(1)}>+</div>
-        </div>
-      </div>
-    </div>
-  );
+    const pct = max > 0 ? (current / max) * 100 : 0;
+    const barColor = pct <= 30 ? "#ff5a4d" : pct <= 60 ? "#e8c33d" : "#3ddc6b";
+    return (React.createElement("div", { className: "u09-card", style: { padding: "8px 10px" } },
+        React.createElement("div", { style: { fontSize: 12, fontWeight: 600, marginBottom: 4, color: "#a8e8ba" } }, label),
+        React.createElement("div", { style: { height: 5, background: "#0a160a", overflow: "hidden", marginBottom: 6 } },
+            React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: barColor } })),
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4 } },
+                React.createElement("span", { className: "u09-label", style: { marginRight: 2 } }, "M\u00E1x"),
+                React.createElement("div", { className: "u09-stepper", style: { width: 16, height: 16 }, onClick: () => onMax(-1) }, "\u2212"),
+                React.createElement("span", { className: "u09-mono" }, max),
+                React.createElement("div", { className: "u09-stepper", style: { width: 16, height: 16 }, onClick: () => onMax(1) }, "+")),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4 } },
+                React.createElement("span", { className: "u09-label", style: { marginRight: 2 } }, "Atual"),
+                React.createElement("div", { className: "u09-stepper", style: { width: 16, height: 16 }, onClick: () => onCur(-1) }, "\u2212"),
+                React.createElement("span", { className: "u09-mono" }, current),
+                React.createElement("div", { className: "u09-stepper", style: { width: 16, height: 16 }, onClick: () => onCur(1) }, "+")))));
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
 </script>
 </body>
 </html>
