@@ -372,7 +372,7 @@ function LoginGate({ onUnlock, onHome }) {
 }
 const termInput = { width: "100%", background: "#050c05", border: "1px solid #235c2f", color: "#7dffa0", padding: "14px 16px", fontFamily: "'Share Tech Mono','Roboto Mono',monospace", fontSize: 20, letterSpacing: "0.05em" };
 const termBtn = { background: "#0d1f0d", border: "1px solid #3ddc6b", color: "#7dffa0", padding: "13px 14px", fontFamily: "'Share Tech Mono',monospace", letterSpacing: "0.1em", fontSize: 14, cursor: "pointer", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
-function App({ onHome }) {
+function App({ onHome, onGoAfiliacao }) {
     const [unlocked, setUnlocked] = useState(false);
     const [keyword, setKeyword] = useState("");
     const [password, setPassword] = useState("");
@@ -420,7 +420,17 @@ function App({ onHome }) {
         setDeleteBusy(false);
     }
     function recuarTrajetoria() {
-        setSheet((s) => ({ ...s, trajetoria: Math.max(1, s.trajetoria - 1) }));
+        setSheet((s) => {
+            if (s.trajetoria <= 1)
+                return s;
+            return {
+                ...s,
+                trajetoria: s.trajetoria - 1,
+                pvPool: Math.max(0, s.pvPool - 2),
+                attrPool: Math.max(0, s.attrPool - 1),
+                skillPool: Math.max(0, s.skillPool - 2),
+            };
+        });
     }
     function handleUnlock(kw, pw, loadedSheet) {
         justUnlockedRef.current = true;
@@ -781,7 +791,9 @@ function App({ onHome }) {
                                     "(",
                                     sheet.afiliacaoCode,
                                     ")")),
-                            React.createElement("button", { className: "u09-btn", onClick: () => setSheet((s) => ({ ...s, afiliacaoCode: "", afiliacaoName: "" })) }, "SAIR DA AFILIA\u00C7\u00C3O"))) : (React.createElement("div", null,
+                            React.createElement("div", { style: { display: "flex", gap: 8 } },
+                                React.createElement("button", { className: "u09-btn", onClick: () => onGoAfiliacao && onGoAfiliacao(sheet.afiliacaoCode) }, "IR PARA A AFILIA\u00C7\u00C3O"),
+                                React.createElement("button", { className: "u09-btn", onClick: () => setSheet((s) => ({ ...s, afiliacaoCode: "", afiliacaoName: "" })) }, "SAIR DA AFILIA\u00C7\u00C3O")))) : (React.createElement("div", null,
                             React.createElement("div", { style: { fontSize: 11, color: "#2e7a44", lineHeight: 1.6, marginBottom: 8 } }, "> Caso queira adicionar esta ficha eletr\u00F4nica a uma afilia\u00E7\u00E3o, insira o c\u00F3digo abaixo e aperte em \"Juntar-se \u00E0 Afilia\u00E7\u00E3o\"."),
                             React.createElement("div", { style: { display: "flex", gap: 8 } },
                                 React.createElement("input", { className: "u09-input", style: { flex: 1, textTransform: "uppercase" }, placeholder: "C\u00F3digo da afilia\u00E7\u00E3o", value: afilCode, onChange: (e) => setAfilCode(e.target.value) }),
@@ -925,8 +937,8 @@ function AfiliacaoCriar({ onBack }) {
             msg),
         React.createElement("button", { onClick: onBack, style: { ...termBtn, marginTop: 14, background: "transparent", width: "100%", justifyContent: "center" } }, "VOLTAR")));
 }
-function AfiliacaoVer({ onBack, onGoFicha }) {
-    const [code, setCode] = useState("");
+function AfiliacaoVer({ onBack, onGoFicha, initialCode }) {
+    const [code, setCode] = useState(initialCode || "");
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState("");
     const [afil, setAfil] = useState(null);
@@ -940,6 +952,25 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
     const [delConfirm, setDelConfirm] = useState(false);
     const [delBusy, setDelBusy] = useState(false);
     const [delMsg, setDelMsg] = useState("");
+    useEffect(() => {
+        if (initialCode)
+            buscarCodigo(initialCode);
+        // eslint-disable-next-line
+    }, [initialCode]);
+    async function buscarCodigo(c) {
+        setBusy(true);
+        setMsg("BUSCANDO…");
+        const { ok, data } = await apiGet(`/api/afiliacao/${encodeURIComponent(c.trim())}`);
+        if (ok) {
+            setAfil(data);
+            setMsg("");
+        }
+        else {
+            setMsg(data.erro || "Afiliação não encontrada.");
+            setAfil(null);
+        }
+        setBusy(false);
+    }
     async function destruirAfiliacao() {
         setDelBusy(true);
         setDelMsg("DESTRUINDO…");
@@ -1178,12 +1209,17 @@ function Redefinir({ onBack }) {
 }
 function Root() {
     const [mode, setMode] = useState("home");
+    const [afilCodeToView, setAfilCodeToView] = useState("");
+    function goAfiliacao(code) {
+        setAfilCodeToView(code);
+        setMode("afiliacao-ver");
+    }
     if (mode === "ficha")
-        return React.createElement(App, { onHome: () => setMode("home") });
+        return React.createElement(App, { onHome: () => setMode("home"), onGoAfiliacao: goAfiliacao });
     if (mode === "afiliacao-criar")
         return React.createElement(AfiliacaoCriar, { onBack: () => setMode("home") });
     if (mode === "afiliacao-ver")
-        return React.createElement(AfiliacaoVer, { onBack: () => setMode("home"), onGoFicha: () => setMode("ficha") });
+        return React.createElement(AfiliacaoVer, { onBack: () => setMode("home"), onGoFicha: () => setMode("ficha"), initialCode: afilCodeToView });
     if (mode === "recuperar")
         return React.createElement(Recuperar, { onBack: (next) => setMode(next) });
     if (mode === "redefinir")
