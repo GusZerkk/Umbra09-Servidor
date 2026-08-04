@@ -985,7 +985,7 @@ function MusicPlayer({ code }) {
                 return;
             playerRef.current = new YT.Player(containerRef.current, {
                 height: "90", width: "160",
-                playerVars: { controls: 1 },
+                playerVars: { controls: 1, loop: 1 },
                 events: {
                     onReady: () => {
                         if (state.videoId) {
@@ -995,6 +995,12 @@ function MusicPlayer({ code }) {
                                 setTimeout(() => playerRef.current.pauseVideo(), 500);
                         }
                         playerRef.current.setVolume(Math.round((state.volume * localVol) / 100));
+                    },
+                    onStateChange: (e) => {
+                        if (e.data === YT.PlayerState.ENDED) {
+                            playerRef.current.seekTo(0);
+                            playerRef.current.playVideo();
+                        }
                     },
                 },
             });
