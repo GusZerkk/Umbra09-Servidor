@@ -102,20 +102,16 @@ function randomCode(len = 6) {
   return s;
 }
 
-// Cria uma nova afiliação e gera um código único — quem cria vira o mestre
+// Cria uma nova afiliação e gera um código único — o mestre cria uma senha própria, sem precisar de ficha
 app.post("/api/afiliacao/criar", async (req, res) => {
   const { name, quote, bannerUrl, masterKeyword, masterPassword } = req.body || {};
   if (!name || !name.trim()) {
     return res.status(400).json({ ok: false, erro: "Informe um nome para a afiliação." });
   }
   if (!masterKeyword || !masterPassword) {
-    return res.status(400).json({ ok: false, erro: "Informe a palavra-chave e a senha da sua ficha para virar o mestre desta afiliação." });
+    return res.status(400).json({ ok: false, erro: "Crie uma palavra-chave e uma senha para ser o mestre desta afiliação." });
   }
   const mkw = normalizeKeyword(masterKeyword);
-  const { data: ficha, error: fErr } = await supabase.from("fichas").select("password_hash").eq("keyword", mkw).maybeSingle();
-  if (fErr || !ficha) return res.status(404).json({ ok: false, erro: "Ficha do mestre não encontrada. Crie sua ficha primeiro." });
-  const senhaMestreOk = await bcrypt.compare(masterPassword, ficha.password_hash);
-  if (!senhaMestreOk) return res.status(401).json({ ok: false, erro: "Senha incorreta." });
 
   let code;
   for (let tries = 0; tries < 6; tries++) {
@@ -123,7 +119,10 @@ app.post("/api/afiliacao/criar", async (req, res) => {
     const { data } = await supabase.from("afiliacoes").select("code").eq("code", code).maybeSingle();
     if (!data) break;
   }
-  const { error } = await supabase.from("afiliacoes").insert({ code, name: name.trim(), quote: quote || "", banner_url: bannerUrl || "", master_keyword: mkw });
+  const masterPasswordHash = await bcrypt.hash(masterPassword, 10);
+  const { error } = await supabase
+    .from("afiliacoes")
+    .insert({ code, name: name.trim(), quote: quote || "", banner_url: bannerUrl || "", master_keyword: mkw, master_password_hash: masterPasswordHash });
   if (error) return res.status(500).json({ ok: false, erro: "Erro ao criar a afiliação." });
   return res.json({ ok: true, code, name: name.trim(), quote: quote || "", bannerUrl: bannerUrl || "" });
 });
@@ -160,16 +159,35 @@ app.post("/api/afiliacao/mestre", async (req, res) => {
   const codeNorm = code.toUpperCase().trim();
   const mkw = normalizeKeyword(masterKeyword);
 
-  const { data: afil } = await supabase.from("afiliacoes").select("master_keyword").eq("code", codeNorm).maybeSingle();
+  const { data: afil } = await supabase.from("afiliacoes").select("master_keyword, master_password_hash").eq("code", codeNorm).maybeSingle();
   if (!afil || afil.master_keyword !== mkw) return res.status(403).json({ ok: false, erro: "Você não é o mestre desta afiliação." });
 
-  const { data: ficha } = await supabase.from("fichas").select("password_hash").eq("keyword", mkw).maybeSingle();
-  if (!ficha) return res.status(404).json({ ok: false, erro: "Ficha do mestre não encontrada." });
-  const senhaOk = await bcrypt.compare(masterPassword, ficha.password_hash);
+  const senhaOk = await bcrypt.compare(masterPassword, afil.master_password_hash);
   if (!senhaOk) return res.status(401).json({ ok: false, erro: "Senha incorreta." });
 
   const { data: membros } = await supabase.from("fichas").select("keyword, sheet").eq("afiliacao_code", codeNorm);
   return res.json({ ok: true, membros: membros || [] });
+});
+
+// Apaga uma afiliação em definitivo (e desconecta as fichas ligadas a ela)
+app.post("/api/afiliacao/deletar", async (req, res) => {
+  const { code, masterKeyword, masterPassword } = req.body || {};
+  if (!code || !masterKeyword || !masterPassword) return res.status(400).json({ ok: false, erro: "Dados incompletos." });
+  const codeNorm = code.toUpperCase().trim();
+  const mkw = normalizeKeyword(masterKeyword);
+
+  const { data: afil } = await supabase.from("afiliacoes").select("master_keyword, master_password_hash").eq("code", codeNorm).maybeSingle();
+  if (!afil || afil.master_keyword !== mkw) return res.status(403).json({ ok: false, erro: "Você não é o mestre desta afiliação." });
+
+  const senhaOk = await bcrypt.compare(masterPassword, afil.master_password_hash);
+  if (!senhaOk) return res.status(401).json({ ok: false, erro: "Senha incorreta." });
+
+  await supabase.from("fichas").update({ afiliacao_code: null }).eq("afiliacao_code", codeNorm);
+  await supabase.from("rolagens").delete().eq("afiliacao_code", codeNorm);
+  const { error: delErr } = await supabase.from("afiliacoes").delete().eq("code", codeNorm);
+  if (delErr) return res.status(500).json({ ok: false, erro: "Erro ao destruir a afiliação." });
+
+  return res.json({ ok: true });
 });
 
 // Registra o resultado de uma rolagem no histórico público da afiliação
