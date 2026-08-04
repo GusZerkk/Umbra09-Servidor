@@ -540,6 +540,13 @@ function App({ onHome }) {
         const skillVal = sheet.skillValues[skillName] + bonus;
         const total = roll + attrVal + skillVal;
         setLastRoll({ skillName, attrLabel, roll, attrVal, skillVal, total, id: nextId() });
+        if (sheet.afiliacaoCode) {
+            apiCall("/api/afiliacao/rolagem", {
+                code: sheet.afiliacaoCode,
+                charName: sheet.charName || keyword,
+                attrLabel, skillName, dado: roll, attrVal, skillVal, total,
+            });
+        }
     }
     function addInventoryItem() {
         if (!invDraft.name.trim())
@@ -854,6 +861,8 @@ function AfiliacaoCriar({ onBack }) {
     const [name, setName] = useState("");
     const [quote, setQuote] = useState("");
     const [bannerUrl, setBannerUrl] = useState("");
+    const [masterKeyword, setMasterKeyword] = useState("");
+    const [masterPassword, setMasterPassword] = useState("");
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState("");
     const [result, setResult] = useState(null);
@@ -863,9 +872,13 @@ function AfiliacaoCriar({ onBack }) {
             setMsg("Informe um nome para a afiliação.");
             return;
         }
+        if (!masterKeyword.trim() || !masterPassword) {
+            setMsg("Informe a palavra-chave e a senha da sua ficha — você vira o mestre desta afiliação.");
+            return;
+        }
         setBusy(true);
         setMsg("REGISTRANDO…");
-        const { ok, data } = await apiCall("/api/afiliacao/criar", { name, quote, bannerUrl });
+        const { ok, data } = await apiCall("/api/afiliacao/criar", { name, quote, bannerUrl, masterKeyword, masterPassword });
         if (ok) {
             setResult(data);
             setMsg("");
@@ -882,7 +895,7 @@ function AfiliacaoCriar({ onBack }) {
                 React.createElement("div", { style: { fontSize: 13, color: "#2ec95c", marginBottom: 10 } }, result.name),
                 React.createElement("div", { className: "u09-label", style: { marginBottom: 6 } }, "C\u00F3digo da afilia\u00E7\u00E3o"),
                 React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 32, fontWeight: 700, letterSpacing: "0.2em", marginBottom: 16 } }, result.code),
-                React.createElement("div", { style: { fontSize: 12, color: "#2e7a44", marginBottom: 20 } }, "Compartilhe esse c\u00F3digo com o mestre e os jogadores \u2014 cada um usa ele na pr\u00F3pria ficha, em \"Juntar-se \u00E0 Afilia\u00E7\u00E3o\"."),
+                React.createElement("div", { style: { fontSize: 12, color: "#2e7a44", marginBottom: 20 } }, "Compartilhe esse c\u00F3digo com o mestre e os jogadores \u2014 cada um usa ele na pr\u00F3pria ficha, em \"Juntar-se \u00E0 Afilia\u00E7\u00E3o\". Como voc\u00EA \u00E9 o mestre, use sua palavra-chave e senha na tela de Visualizar Afilia\u00E7\u00E3o pra ver as fichas do grupo."),
                 React.createElement("button", { style: termBtn, onClick: onBack }, "VOLTAR AO IN\u00CDCIO"))));
     }
     return (React.createElement(Screen, null,
@@ -897,6 +910,13 @@ function AfiliacaoCriar({ onBack }) {
             React.createElement("div", null,
                 React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "URL DO BANNER (opcional)"),
                 React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: bannerUrl, onChange: (e) => setBannerUrl(e.target.value), placeholder: "https://\u2026" })),
+            React.createElement("div", { style: { borderTop: "1px solid #1a3a1a", paddingTop: 10, fontSize: 11, color: "#2e7a44" } }, "> Quem cria a afilia\u00E7\u00E3o vira o mestre e poder\u00E1 ver as fichas dos membros. Use a palavra-chave/senha da sua pr\u00F3pria ficha (crie uma antes, se ainda n\u00E3o tiver)."),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "SUA PALAVRA-CHAVE (MESTRE)"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: masterKeyword, onChange: (e) => setMasterKeyword(e.target.value) })),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "SUA SENHA"),
+                React.createElement("input", { className: "u09-input", type: "password", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: masterPassword, onChange: (e) => setMasterPassword(e.target.value) })),
             React.createElement("button", { type: "submit", disabled: busy, style: termBtn }, busy ? "PROCESSANDO…" : "CRIAR AFILIAÇÃO")),
         msg && React.createElement("div", { style: { marginTop: 12, fontSize: 12, color: "#ff5a4d" } },
             "> ",
@@ -908,6 +928,13 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState("");
     const [afil, setAfil] = useState(null);
+    const [showMestre, setShowMestre] = useState(false);
+    const [mKeyword, setMKeyword] = useState("");
+    const [mPassword, setMPassword] = useState("");
+    const [mBusy, setMBusy] = useState(false);
+    const [mMsg, setMMsg] = useState("");
+    const [mMembros, setMMembros] = useState(null);
+    const [verFicha, setVerFicha] = useState(null);
     async function buscar(e) {
         e.preventDefault();
         if (!code.trim())
@@ -924,6 +951,62 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
             setAfil(null);
         }
         setBusy(false);
+    }
+    async function entrarComoMestre(e) {
+        e.preventDefault();
+        setMBusy(true);
+        setMMsg("VERIFICANDO…");
+        const { ok, data } = await apiCall("/api/afiliacao/mestre", { code: afil.code, masterKeyword: mKeyword, masterPassword: mPassword });
+        if (ok) {
+            setMMembros(data.membros);
+            setMMsg("");
+        }
+        else {
+            setMMsg(data.erro || "Falha ao autenticar.");
+        }
+        setMBusy(false);
+    }
+    if (verFicha) {
+        const s = verFicha.sheet || {};
+        return (React.createElement("div", { style: { minHeight: "100vh", color: "#dbe4ea", position: "relative", padding: "30px 20px" } },
+            React.createElement(MatrixRain, null),
+            React.createElement("div", { style: { position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" } },
+                React.createElement("button", { style: { ...termBtn, marginBottom: 16 }, onClick: () => setVerFicha(null) }, "\u2190 VOLTAR AO MURAL"),
+                React.createElement("div", { className: "u09-card", style: { marginBottom: 14 } },
+                    React.createElement("div", { style: { fontSize: 20, fontWeight: 700 }, className: "u09-glow" }, s.charName || verFicha.keyword),
+                    React.createElement("div", { style: { fontSize: 12, color: "#2e7a44" } },
+                        s.funcao || "Sem função",
+                        " \u00B7 Trajet\u00F3ria ",
+                        s.trajetoria,
+                        " \u00B7 Jogador: ",
+                        s.playerName || "—")),
+                React.createElement("div", { className: "u09-card", style: { marginBottom: 14 } },
+                    React.createElement("div", { className: "u09-label", style: { marginBottom: 6 } }, "Atributos"),
+                    ATTRIBUTES.map((a) => (React.createElement("div", { key: a.key, style: { fontSize: 12, marginBottom: 2 } },
+                        a.label,
+                        ": ",
+                        React.createElement("strong", null, s.attrValues ? s.attrValues[a.key] : 0),
+                        " \u2014 ",
+                        a.skills.map((sk) => `${sk} ${s.skillValues ? s.skillValues[sk] : 0}`).join(", "))))),
+                React.createElement("div", { className: "u09-card", style: { marginBottom: 14 } },
+                    React.createElement("div", { className: "u09-label", style: { marginBottom: 6 } }, "Vida"),
+                    BODY_PARTS.map((p) => (React.createElement("div", { key: p.key, style: { fontSize: 12 } },
+                        p.label,
+                        ": ",
+                        React.createElement("strong", null, s.pvCurrent ? s.pvCurrent[p.key] : 0),
+                        " / ",
+                        BASE_HP[p.key] + (s.pvMax ? s.pvMax[p.key] : 0))))),
+                React.createElement("div", { className: "u09-card", style: { marginBottom: 14 } },
+                    React.createElement("div", { className: "u09-label", style: { marginBottom: 6 } }, "Equipamento"),
+                    s.equipment && Object.entries(s.equipment).map(([k, v]) => React.createElement("div", { key: k, style: { fontSize: 12 } },
+                        k,
+                        ": ",
+                        v.name || "—",
+                        " ",
+                        v.ca ? `(CA +${v.ca})` : ""))),
+                s.background && React.createElement("div", { className: "u09-card" },
+                    React.createElement("div", { className: "u09-label", style: { marginBottom: 6 } }, "Hist\u00F3rico"),
+                    React.createElement("div", { style: { fontSize: 12, whiteSpace: "pre-wrap" } }, s.background)))));
     }
     if (afil) {
         return (React.createElement("div", { style: { minHeight: "100vh", color: "#dbe4ea", position: "relative", padding: "30px 20px" } },
@@ -944,7 +1027,7 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
                     "Membros (",
                     afil.membros.length,
                     ")"),
-                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 14 } },
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 14, marginBottom: 24 } },
                     afil.membros.map((m, i) => (React.createElement("div", { key: i, className: "u09-card", style: { display: "flex", gap: 10 } },
                         React.createElement("div", { style: { width: 56, height: 56, background: "#0a160a", border: "1px solid #235c2f", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" } }, m.avatarUrl ? React.createElement("img", { src: m.avatarUrl, alt: "", style: { width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(40%) sepia(20%) hue-rotate(60deg)" } }) : React.createElement("span", { style: { color: "#235c2f" } }, "\u25C8")),
                         React.createElement("div", null,
@@ -954,7 +1037,35 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
                                 " \u00B7 Trajet\u00F3ria ",
                                 m.trajetoria))))),
                     afil.membros.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhum membro ainda.")),
-                React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 24 } },
+                React.createElement("div", { className: "u09-label", style: { marginBottom: 10 } }, "Hist\u00F3rico de rolagens"),
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 24, maxHeight: 340, overflowY: "auto" } },
+                    afil.rolagens.map((r) => (React.createElement("div", { key: r.id, className: "u09-card", style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "8px 12px" } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, r.char_name),
+                            React.createElement("div", { className: "u09-mono", style: { fontSize: 11, color: "#2e7a44" } },
+                                r.skill_name,
+                                " (",
+                                r.attr_label,
+                                ") \u00B7 1d20(",
+                                r.dado,
+                                ") + ",
+                                r.attr_val,
+                                " + ",
+                                r.skill_val)),
+                        React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 20, fontWeight: 700 } }, r.total)))),
+                    afil.rolagens.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma rolagem registrada ainda.")),
+                React.createElement("div", { className: "u09-card", style: { marginBottom: 24 } },
+                    React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "\u00C1rea do mestre"),
+                    mMembros ? (React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 } }, mMembros.map((m) => (React.createElement("button", { key: m.keyword, className: "u09-btn", style: { justifyContent: "flex-start" }, onClick: () => setVerFicha(m) },
+                        "\uD83D\uDC41 ",
+                        (m.sheet && m.sheet.charName) || m.keyword))))) : !showMestre ? (React.createElement("button", { className: "u09-btn", onClick: () => setShowMestre(true) }, "SOU O MESTRE DESTA AFILIA\u00C7\u00C3O")) : (React.createElement("form", { onSubmit: entrarComoMestre, style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+                        React.createElement("input", { className: "u09-input", placeholder: "Sua palavra-chave", value: mKeyword, onChange: (e) => setMKeyword(e.target.value) }),
+                        React.createElement("input", { className: "u09-input", type: "password", placeholder: "Sua senha", value: mPassword, onChange: (e) => setMPassword(e.target.value) }),
+                        React.createElement("button", { className: "u09-btn", disabled: mBusy }, "ENTRAR"))),
+                    mMsg && React.createElement("div", { style: { fontSize: 11, color: "#ff5a4d", marginTop: 8 } },
+                        "> ",
+                        mMsg)),
+                React.createElement("div", { style: { display: "flex", gap: 10 } },
                     React.createElement("button", { style: termBtn, onClick: onGoFicha }, "ACESSAR MINHA FICHA"),
                     React.createElement("button", { style: { ...termBtn, background: "transparent" }, onClick: onBack }, "VOLTAR AO IN\u00CDCIO")))));
     }
