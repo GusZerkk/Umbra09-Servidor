@@ -207,6 +207,50 @@ app.post("/api/afiliacao/rolagem", async (req, res) => {
   return res.json({ ok: true });
 });
 
+// -- trilha sonora --------------------------------------------------------
+
+function extractYouTubeId(input) {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  const m = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+// Painel do mestre: define a música tocando, se está tocando, e o volume geral
+app.post("/api/afiliacao/musica", async (req, res) => {
+  const { code, masterKeyword, masterPassword, videoUrl, playing, volume } = req.body || {};
+  if (!code || !masterKeyword || !masterPassword) return res.status(400).json({ ok: false, erro: "Dados incompletos." });
+  const codeNorm = code.toUpperCase().trim();
+  const mkw = normalizeKeyword(masterKeyword);
+
+  const { data: afil } = await supabase.from("afiliacoes").select("master_keyword, master_password_hash").eq("code", codeNorm).maybeSingle();
+  if (!afil || afil.master_keyword !== mkw) return res.status(403).json({ ok: false, erro: "Você não é o mestre desta afiliação." });
+  const senhaOk = await bcrypt.compare(masterPassword, afil.master_password_hash);
+  if (!senhaOk) return res.status(401).json({ ok: false, erro: "Senha incorreta." });
+
+  const update = {};
+  if (videoUrl !== undefined && videoUrl !== "") {
+    const vid = extractYouTubeId(videoUrl);
+    if (!vid) return res.status(400).json({ ok: false, erro: "Link do YouTube inválido." });
+    update.music_video_id = vid;
+  }
+  if (playing !== undefined) update.music_playing = !!playing;
+  if (volume !== undefined) update.music_volume = Math.max(0, Math.min(100, Number(volume) || 0));
+
+  const { error } = await supabase.from("afiliacoes").update(update).eq("code", codeNorm);
+  if (error) return res.status(500).json({ ok: false, erro: "Erro ao atualizar a trilha sonora." });
+  return res.json({ ok: true });
+});
+
+// Consulta leve pra tocadores acompanharem o estado da trilha sonora (sem senha)
+app.get("/api/afiliacao/:code/musica", async (req, res) => {
+  const code = req.params.code.toUpperCase().trim();
+  const { data } = await supabase.from("afiliacoes").select("music_video_id, music_playing, music_volume").eq("code", code).maybeSingle();
+  if (!data) return res.status(404).json({ ok: false });
+  return res.json({ ok: true, videoId: data.music_video_id, playing: data.music_playing, volume: data.music_volume });
+});
+
 // Junta uma ficha (autenticada) a uma afiliação existente
 app.post("/api/afiliacao/juntar", async (req, res) => {
   const { keyword, password, code } = req.body || {};
