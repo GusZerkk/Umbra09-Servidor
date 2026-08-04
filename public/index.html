@@ -772,14 +772,16 @@ function App({ onHome }) {
                                 sheet.diary.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma anota\u00E7\u00E3o ainda.")))),
                     React.createElement("div", { className: "u09-card", style: { marginTop: 20 } },
                         React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Afilia\u00E7\u00E3o"),
-                        sheet.afiliacaoCode ? (React.createElement("div", { style: { fontSize: 13, color: "#2ec95c" } },
-                            "Conectado \u00E0 afilia\u00E7\u00E3o ",
-                            React.createElement("strong", null, sheet.afiliacaoName || sheet.afiliacaoCode),
-                            " ",
-                            React.createElement("span", { className: "u09-mono", style: { color: "#2e7a44" } },
-                                "(",
-                                sheet.afiliacaoCode,
-                                ")"))) : (React.createElement("div", null,
+                        sheet.afiliacaoCode ? (React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 } },
+                            React.createElement("div", { style: { fontSize: 13, color: "#2ec95c" } },
+                                "Conectado \u00E0 afilia\u00E7\u00E3o ",
+                                React.createElement("strong", null, sheet.afiliacaoName || sheet.afiliacaoCode),
+                                " ",
+                                React.createElement("span", { className: "u09-mono", style: { color: "#2e7a44" } },
+                                    "(",
+                                    sheet.afiliacaoCode,
+                                    ")")),
+                            React.createElement("button", { className: "u09-btn", onClick: () => setSheet((s) => ({ ...s, afiliacaoCode: "", afiliacaoName: "" })) }, "SAIR DA AFILIA\u00C7\u00C3O"))) : (React.createElement("div", null,
                             React.createElement("div", { style: { fontSize: 11, color: "#2e7a44", lineHeight: 1.6, marginBottom: 8 } }, "> Caso queira adicionar esta ficha eletr\u00F4nica a uma afilia\u00E7\u00E3o, insira o c\u00F3digo abaixo e aperte em \"Juntar-se \u00E0 Afilia\u00E7\u00E3o\"."),
                             React.createElement("div", { style: { display: "flex", gap: 8 } },
                                 React.createElement("input", { className: "u09-input", style: { flex: 1, textTransform: "uppercase" }, placeholder: "C\u00F3digo da afilia\u00E7\u00E3o", value: afilCode, onChange: (e) => setAfilCode(e.target.value) }),
@@ -873,7 +875,7 @@ function AfiliacaoCriar({ onBack }) {
             return;
         }
         if (!masterKeyword.trim() || !masterPassword) {
-            setMsg("Informe a palavra-chave e a senha da sua ficha — você vira o mestre desta afiliação.");
+            setMsg("Crie uma palavra-chave e uma senha para ser o mestre desta afiliação.");
             return;
         }
         setBusy(true);
@@ -910,12 +912,12 @@ function AfiliacaoCriar({ onBack }) {
             React.createElement("div", null,
                 React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "URL DO BANNER (opcional)"),
                 React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: bannerUrl, onChange: (e) => setBannerUrl(e.target.value), placeholder: "https://\u2026" })),
-            React.createElement("div", { style: { borderTop: "1px solid #1a3a1a", paddingTop: 10, fontSize: 11, color: "#2e7a44" } }, "> Quem cria a afilia\u00E7\u00E3o vira o mestre e poder\u00E1 ver as fichas dos membros. Use a palavra-chave/senha da sua pr\u00F3pria ficha (crie uma antes, se ainda n\u00E3o tiver)."),
+            React.createElement("div", { style: { borderTop: "1px solid #1a3a1a", paddingTop: 10, fontSize: 11, color: "#2e7a44" } }, "> Quem cria a afilia\u00E7\u00E3o vira o mestre e poder\u00E1 ver as fichas dos membros. Crie uma palavra-chave e senha s\u00F3 para isso \u2014 n\u00E3o precisa ter uma ficha de personagem."),
             React.createElement("div", null,
-                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "SUA PALAVRA-CHAVE (MESTRE)"),
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "PALAVRA-CHAVE DO MESTRE"),
                 React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: masterKeyword, onChange: (e) => setMasterKeyword(e.target.value) })),
             React.createElement("div", null,
-                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "SUA SENHA"),
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "SENHA DO MESTRE"),
                 React.createElement("input", { className: "u09-input", type: "password", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: masterPassword, onChange: (e) => setMasterPassword(e.target.value) })),
             React.createElement("button", { type: "submit", disabled: busy, style: termBtn }, busy ? "PROCESSANDO…" : "CRIAR AFILIAÇÃO")),
         msg && React.createElement("div", { style: { marginTop: 12, fontSize: 12, color: "#ff5a4d" } },
@@ -935,6 +937,23 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
     const [mMsg, setMMsg] = useState("");
     const [mMembros, setMMembros] = useState(null);
     const [verFicha, setVerFicha] = useState(null);
+    const [delConfirm, setDelConfirm] = useState(false);
+    const [delBusy, setDelBusy] = useState(false);
+    const [delMsg, setDelMsg] = useState("");
+    async function destruirAfiliacao() {
+        setDelBusy(true);
+        setDelMsg("DESTRUINDO…");
+        const { ok, data } = await apiCall("/api/afiliacao/deletar", { code: afil.code, masterKeyword: mKeyword, masterPassword: mPassword });
+        if (ok) {
+            setAfil(null);
+            setMMembros(null);
+            setDelConfirm(false);
+        }
+        else {
+            setDelMsg(data.erro || "Falha ao destruir.");
+        }
+        setDelBusy(false);
+    }
     async function buscar(e) {
         e.preventDefault();
         if (!code.trim())
@@ -1056,9 +1075,18 @@ function AfiliacaoVer({ onBack, onGoFicha }) {
                     afil.rolagens.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma rolagem registrada ainda.")),
                 React.createElement("div", { className: "u09-card", style: { marginBottom: 24 } },
                     React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "\u00C1rea do mestre"),
-                    mMembros ? (React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 } }, mMembros.map((m) => (React.createElement("button", { key: m.keyword, className: "u09-btn", style: { justifyContent: "flex-start" }, onClick: () => setVerFicha(m) },
-                        "\uD83D\uDC41 ",
-                        (m.sheet && m.sheet.charName) || m.keyword))))) : !showMestre ? (React.createElement("button", { className: "u09-btn", onClick: () => setShowMestre(true) }, "SOU O MESTRE DESTA AFILIA\u00C7\u00C3O")) : (React.createElement("form", { onSubmit: entrarComoMestre, style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+                    mMembros ? (React.createElement("div", null,
+                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10, marginBottom: 16 } }, mMembros.map((m) => (React.createElement("button", { key: m.keyword, className: "u09-btn", style: { justifyContent: "flex-start" }, onClick: () => setVerFicha(m) },
+                            "\uD83D\uDC41 ",
+                            (m.sheet && m.sheet.charName) || m.keyword)))),
+                        !delConfirm ? (React.createElement("button", { className: "u09-btn", style: { borderColor: "#5c2323", color: "#ff8f85" }, onClick: () => setDelConfirm(true) }, "\uD83D\uDDD1 DESTRUIR ESTA AFILIA\u00C7\u00C3O")) : (React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 12, color: "#ff5a4d", lineHeight: 1.6, marginBottom: 10 } }, "> Tem certeza que deseja destruir esta afilia\u00E7\u00E3o? Todos os membros ser\u00E3o desconectados e o hist\u00F3rico de rolagens ser\u00E1 apagado. Essa a\u00E7\u00E3o n\u00E3o pode ser desfeita."),
+                            React.createElement("div", { style: { display: "flex", gap: 8 } },
+                                React.createElement("button", { className: "u09-btn", style: { borderColor: "#5c2323", color: "#ff8f85" }, disabled: delBusy, onClick: destruirAfiliacao }, "CONFIRMAR DESTRUI\u00C7\u00C3O"),
+                                React.createElement("button", { className: "u09-btn", onClick: () => setDelConfirm(false) }, "CANCELAR")))),
+                        delMsg && React.createElement("div", { style: { fontSize: 11, color: "#ff5a4d", marginTop: 8 } },
+                            "> ",
+                            delMsg))) : !showMestre ? (React.createElement("button", { className: "u09-btn", onClick: () => setShowMestre(true) }, "SOU O MESTRE DESTA AFILIA\u00C7\u00C3O")) : (React.createElement("form", { onSubmit: entrarComoMestre, style: { display: "flex", gap: 8, flexWrap: "wrap" } },
                         React.createElement("input", { className: "u09-input", placeholder: "Sua palavra-chave", value: mKeyword, onChange: (e) => setMKeyword(e.target.value) }),
                         React.createElement("input", { className: "u09-input", type: "password", placeholder: "Sua senha", value: mPassword, onChange: (e) => setMPassword(e.target.value) }),
                         React.createElement("button", { className: "u09-btn", disabled: mBusy }, "ENTRAR"))),
