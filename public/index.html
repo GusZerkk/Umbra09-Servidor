@@ -607,6 +607,7 @@ function App({ onHome, onGoAfiliacao }) {
                 "> ",
                 status),
             React.createElement("div", { style: { padding: 20, maxWidth: 980, margin: "0 auto" } },
+                sheet.afiliacaoCode && React.createElement(MusicPlayer, { code: sheet.afiliacaoCode }),
                 React.createElement("div", { className: "u09-card", style: { display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 } },
                     React.createElement("div", { style: { width: 84, height: 84, background: "#0a160a", border: "1px solid #235c2f", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, sheet.avatarUrl ? (React.createElement("img", { src: sheet.avatarUrl, alt: "avatar", style: { width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(40%) sepia(20%) hue-rotate(60deg)" } })) : (React.createElement("span", { style: { fontSize: 28, color: "#235c2f" } }, "\u25C8"))),
                     React.createElement("div", { style: { flex: 1, minWidth: 220, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
@@ -937,6 +938,129 @@ function AfiliacaoCriar({ onBack }) {
             msg),
         React.createElement("button", { onClick: onBack, style: { ...termBtn, marginTop: 14, background: "transparent", width: "100%", justifyContent: "center" } }, "VOLTAR")));
 }
+function loadYouTubeAPI() {
+    return new Promise((resolve) => {
+        if (window.YT && window.YT.Player) {
+            resolve(window.YT);
+            return;
+        }
+        if (!document.getElementById("yt-iframe-api")) {
+            const tag = document.createElement("script");
+            tag.id = "yt-iframe-api";
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.body.appendChild(tag);
+        }
+        const prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+            if (prev)
+                prev();
+            resolve(window.YT);
+        };
+    });
+}
+function MusicPlayer({ code }) {
+    const [enabled, setEnabled] = useState(false);
+    const [localVol, setLocalVol] = useState(100);
+    const [state, setState] = useState({ videoId: null, playing: false, volume: 60 });
+    const playerRef = useRef(null);
+    const containerRef = useRef(null);
+    const loadedVideoRef = useRef(null);
+    useEffect(() => {
+        let stopped = false;
+        async function poll() {
+            const { ok, data } = await apiGet(`/api/afiliacao/${encodeURIComponent(code)}/musica`);
+            if (!stopped && ok)
+                setState({ videoId: data.videoId, playing: data.playing, volume: data.volume });
+        }
+        poll();
+        const interval = setInterval(poll, 4000);
+        return () => { stopped = true; clearInterval(interval); };
+    }, [code]);
+    useEffect(() => {
+        if (!enabled || playerRef.current)
+            return;
+        let cancelled = false;
+        loadYouTubeAPI().then((YT) => {
+            if (cancelled)
+                return;
+            playerRef.current = new YT.Player(containerRef.current, {
+                height: "90", width: "160",
+                playerVars: { controls: 1 },
+                events: {
+                    onReady: () => {
+                        if (state.videoId) {
+                            loadedVideoRef.current = state.videoId;
+                            playerRef.current.loadVideoById(state.videoId);
+                            if (!state.playing)
+                                setTimeout(() => playerRef.current.pauseVideo(), 500);
+                        }
+                        playerRef.current.setVolume(Math.round((state.volume * localVol) / 100));
+                    },
+                },
+            });
+        });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line
+    }, [enabled]);
+    useEffect(() => {
+        if (!enabled || !playerRef.current || !playerRef.current.loadVideoById)
+            return;
+        if (state.videoId && state.videoId !== loadedVideoRef.current) {
+            loadedVideoRef.current = state.videoId;
+            playerRef.current.loadVideoById(state.videoId);
+            if (!state.playing)
+                setTimeout(() => playerRef.current.pauseVideo(), 500);
+        }
+        else if (state.videoId) {
+            if (state.playing)
+                playerRef.current.playVideo();
+            else
+                playerRef.current.pauseVideo();
+        }
+        playerRef.current.setVolume(Math.round((state.volume * localVol) / 100));
+        // eslint-disable-next-line
+    }, [state, localVol, enabled]);
+    return (React.createElement("div", { className: "u09-card", style: { marginBottom: 16 } },
+        React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Trilha sonora"),
+        !enabled ? (React.createElement("button", { className: "u09-btn", onClick: () => setEnabled(true) }, "\uD83D\uDD0A ATIVAR TRILHA SONORA")) : (React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" } },
+            React.createElement("div", { ref: containerRef }),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, color: "#2e7a44", marginBottom: 8 } }, state.videoId ? (state.playing ? "▶ Tocando…" : "⏸ Pausado pelo mestre") : "Nenhuma música definida ainda."),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    React.createElement("span", { style: { fontSize: 11, color: "#2e7a44" } }, "Meu volume"),
+                    React.createElement("input", { type: "range", min: "0", max: "150", value: localVol, onChange: (e) => setLocalVol(Number(e.target.value)) }),
+                    React.createElement("span", { className: "u09-mono", style: { fontSize: 11 } },
+                        localVol,
+                        "%")))))));
+}
+function MasterMusicControls({ code, masterKeyword, masterPassword }) {
+    const [url, setUrl] = useState("");
+    const [volume, setVolume] = useState(60);
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState("");
+    async function enviar(payload) {
+        setBusy(true);
+        const { ok, data } = await apiCall("/api/afiliacao/musica", { code, masterKeyword, masterPassword, ...payload });
+        setMsg(ok ? "" : (data.erro || "Falha ao atualizar."));
+        setBusy(false);
+    }
+    return (React.createElement("div", { className: "u09-card", style: { marginTop: 16 } },
+        React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Painel de trilha sonora"),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" } },
+            React.createElement("input", { className: "u09-input", style: { flex: 1, minWidth: 200 }, placeholder: "Link do YouTube", value: url, onChange: (e) => setUrl(e.target.value) }),
+            React.createElement("button", { className: "u09-btn", disabled: busy, onClick: () => enviar({ videoUrl: url, playing: true }) }, "\u25B6 TOCAR")),
+        React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } },
+            React.createElement("button", { className: "u09-btn", disabled: busy, onClick: () => enviar({ playing: false }) }, "\u23F8 PAUSAR"),
+            React.createElement("button", { className: "u09-btn", disabled: busy, onClick: () => enviar({ playing: true }) }, "\u25B6 RETOMAR"),
+            React.createElement("span", { style: { fontSize: 11, color: "#2e7a44" } }, "Volume geral"),
+            React.createElement("input", { type: "range", min: "0", max: "100", value: volume, onChange: (e) => setVolume(Number(e.target.value)), onMouseUp: () => enviar({ volume }), onTouchEnd: () => enviar({ volume }) }),
+            React.createElement("span", { className: "u09-mono", style: { fontSize: 11 } },
+                volume,
+                "%")),
+        msg && React.createElement("div", { style: { fontSize: 11, color: "#ff5a4d", marginTop: 8 } },
+            "> ",
+            msg)));
+}
 function AfiliacaoVer({ onBack, onGoFicha, initialCode }) {
     const [code, setCode] = useState(initialCode || "");
     const [busy, setBusy] = useState(false);
@@ -1073,6 +1197,7 @@ function AfiliacaoVer({ onBack, onGoFicha, initialCode }) {
                         React.createElement("div", { className: "u09-mono", style: { fontSize: 11, color: "#2e7a44", marginTop: 6 } },
                             "C\u00D3DIGO: ",
                             afil.code))),
+                React.createElement(MusicPlayer, { code: afil.code }),
                 React.createElement("div", { className: "u09-label", style: { marginBottom: 10 } },
                     "Membros (",
                     afil.membros.length,
@@ -1107,7 +1232,8 @@ function AfiliacaoVer({ onBack, onGoFicha, initialCode }) {
                 React.createElement("div", { className: "u09-card", style: { marginBottom: 24 } },
                     React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "\u00C1rea do mestre"),
                     mMembros ? (React.createElement("div", null,
-                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10, marginBottom: 16 } }, mMembros.map((m) => (React.createElement("button", { key: m.keyword, className: "u09-btn", style: { justifyContent: "flex-start" }, onClick: () => setVerFicha(m) },
+                        React.createElement(MasterMusicControls, { code: afil.code, masterKeyword: mKeyword, masterPassword: mPassword }),
+                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10, margin: "16px 0" } }, mMembros.map((m) => (React.createElement("button", { key: m.keyword, className: "u09-btn", style: { justifyContent: "flex-start" }, onClick: () => setVerFicha(m) },
                             "\uD83D\uDC41 ",
                             (m.sheet && m.sheet.charName) || m.keyword)))),
                         !delConfirm ? (React.createElement("button", { className: "u09-btn", style: { borderColor: "#5c2323", color: "#ff8f85" }, onClick: () => setDelConfirm(true) }, "\uD83D\uDDD1 DESTRUIR ESTA AFILIA\u00C7\u00C3O")) : (React.createElement("div", null,
