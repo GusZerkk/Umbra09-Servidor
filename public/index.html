@@ -118,6 +118,7 @@ function newSheet() {
         caBase: 0, equipment: emptyEquipment(),
         inventory: [], abilities: [], background: "", diary: [],
         existencia: 0, trajetoria: 1, titulos: [], funcao: "", funcaoEspecialista: "",
+        afiliacaoCode: "", afiliacaoName: "", recoveryEmail: "",
     };
 }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
@@ -127,6 +128,15 @@ async function apiCall(path, body) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
     });
+    let data = {};
+    try {
+        data = await res.json();
+    }
+    catch (e) { }
+    return { ok: res.ok, status: res.status, data };
+}
+async function apiGet(path) {
+    const res = await fetch(path);
     let data = {};
     try {
         data = await res.json();
@@ -235,7 +245,7 @@ function IrisTransition({ onDone }) {
     }, []);
     return React.createElement("canvas", { ref: canvasRef, style: { position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none" } });
 }
-function LoginGate({ onUnlock }) {
+function LoginGate({ onUnlock, onHome }) {
     const [mode, setMode] = useState("login");
     const [keyword, setKeyword] = useState("");
     const [password, setPassword] = useState("");
@@ -357,11 +367,12 @@ function LoginGate({ onUnlock }) {
                 "> ",
                 msg),
             React.createElement("div", { style: { marginTop: 22, borderTop: "1px solid #1a3a1a", paddingTop: 14, fontSize: 11, lineHeight: 1.6, color: "#2e7a44" } }, "Caso queira criar uma nova ficha eletr\u00F4nica para um indiv\u00EDduo desconhecido pelo sistema, aperte abaixo em notificar nova ficha. Lembre que toda nova ficha encontrada dever\u00E1 ter uma palavra-chave e uma senha pr\u00F3prias."),
-            React.createElement("button", { onClick: () => switchMode("create"), style: { ...termBtn, marginTop: 10, width: "100%", justifyContent: "center" } }, "NOTIFICAR NOVA FICHA"))));
+            React.createElement("button", { onClick: () => switchMode("create"), style: { ...termBtn, marginTop: 10, width: "100%", justifyContent: "center" } }, "NOTIFICAR NOVA FICHA"),
+            onHome && React.createElement("div", { onClick: onHome, style: { textAlign: "center", marginTop: 14, fontSize: 11, color: "#2e7a44", cursor: "pointer", textDecoration: "underline" } }, "\u2190 voltar ao in\u00EDcio"))));
 }
 const termInput = { width: "100%", background: "#050c05", border: "1px solid #235c2f", color: "#7dffa0", padding: "14px 16px", fontFamily: "'Share Tech Mono','Roboto Mono',monospace", fontSize: 20, letterSpacing: "0.05em" };
 const termBtn = { background: "#0d1f0d", border: "1px solid #3ddc6b", color: "#7dffa0", padding: "13px 14px", fontFamily: "'Share Tech Mono',monospace", letterSpacing: "0.1em", fontSize: 14, cursor: "pointer", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
-function App() {
+function App({ onHome }) {
     const [unlocked, setUnlocked] = useState(false);
     const [keyword, setKeyword] = useState("");
     const [password, setPassword] = useState("");
@@ -375,6 +386,42 @@ function App() {
     const [diaryDraft, setDiaryDraft] = useState("");
     const [tituloDraft, setTituloDraft] = useState("");
     const justUnlockedRef = useRef(true);
+    const [afilCode, setAfilCode] = useState("");
+    const [afilBusy, setAfilBusy] = useState(false);
+    const [afilMsg, setAfilMsg] = useState("");
+    const [deleteConfirm, setDeleteConfirm] = useState(false);
+    const [deleteBusy, setDeleteBusy] = useState(false);
+    const [deleteMsg, setDeleteMsg] = useState("");
+    async function juntarAfiliacao() {
+        if (!afilCode.trim())
+            return;
+        setAfilBusy(true);
+        setAfilMsg("PROCESSANDO…");
+        const { ok, data } = await apiCall("/api/afiliacao/juntar", { keyword, password, code: afilCode.trim() });
+        if (ok) {
+            setSheet((s) => ({ ...s, afiliacaoCode: data.code, afiliacaoName: data.name }));
+            setAfilMsg(`CONECTADO À AFILIAÇÃO "${data.name}".`);
+        }
+        else {
+            setAfilMsg(data.erro || "Falha ao entrar na afiliação.");
+        }
+        setAfilBusy(false);
+    }
+    async function deletarFicha() {
+        setDeleteBusy(true);
+        setDeleteMsg("APAGANDO…");
+        const { ok, data } = await apiCall("/api/deletar", { keyword, password });
+        if (ok) {
+            logout();
+        }
+        else {
+            setDeleteMsg(data.erro || "Falha ao deletar.");
+        }
+        setDeleteBusy(false);
+    }
+    function recuarTrajetoria() {
+        setSheet((s) => ({ ...s, trajetoria: Math.max(1, s.trajetoria - 1) }));
+    }
     function handleUnlock(kw, pw, loadedSheet) {
         justUnlockedRef.current = true;
         setKeyword(kw);
@@ -524,7 +571,7 @@ function App() {
     }
     function logout() { setUnlocked(false); setKeyword(""); setPassword(""); setSheet(newSheet()); setStatus(""); }
     if (!unlocked)
-        return React.createElement(LoginGate, { onUnlock: handleUnlock });
+        return React.createElement(LoginGate, { onUnlock: handleUnlock, onHome: onHome });
     return (React.createElement("div", { style: { fontFamily: "'Share Tech Mono','Roboto Mono',monospace", color: "#7dffa0", minHeight: "100vh", position: "relative" } },
         React.createElement(MatrixRain, null),
         React.createElement("div", { style: { position: "relative", zIndex: 2 } },
@@ -536,6 +583,7 @@ function App() {
                         "/ ARQUIVO: ",
                         keyword.toUpperCase())),
                 React.createElement("div", { style: { flex: 1 } }),
+                React.createElement("button", { className: "u09-btn", onClick: onHome }, "\uD83C\uDFE0 IN\u00CDCIO"),
                 React.createElement("button", { className: "u09-btn", onClick: saveSheet, disabled: busy }, "\uD83D\uDCBE GRAVAR"),
                 React.createElement("button", { className: "u09-btn", onClick: logout }, "\uD83D\uDD12 ENCERRAR SESS\u00C3O")),
             status && React.createElement("div", { className: "u09-mono", style: { padding: "6px 20px", fontSize: 11, color: "#3ddc6b", borderBottom: "1px solid #1a3a1a" } },
@@ -573,7 +621,9 @@ function App() {
                         React.createElement(PoolEditor, { label: "Pontos de per\u00EDcia", pool: sheet.skillPool, remaining: skillRemaining, onChange: (v) => setSheet((s) => ({ ...s, skillPool: v })) }),
                         React.createElement("div", { className: "u09-card", style: { padding: "8px 14px" } },
                             React.createElement("div", { className: "u09-label" }, "Trajet\u00F3ria (n\u00EDvel)"),
-                            React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 22, fontWeight: 700, marginBottom: 6 } }, sheet.trajetoria),
+                            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 } },
+                                React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 22, fontWeight: 700 } }, sheet.trajetoria),
+                                React.createElement("div", { className: "u09-stepper", title: "Corrigir: voltar 1 n\u00EDvel", style: { width: 18, height: 18 }, onClick: recuarTrajetoria }, "\u2212")),
                             React.createElement("div", { className: "u09-label" }, "Exist\u00EAncia"),
                             React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 4 } }, [0, 1, 2, 3, 4].map((i) => (React.createElement("div", { key: i, onClick: () => toggleExistencia(i), title: "Ponto de exist\u00EAncia", style: { width: 16, height: 16, borderRadius: "50%", border: "1px solid #3ddc6b", cursor: "pointer", background: i < sheet.existencia ? "#3ddc6b" : "transparent" } })))))),
                     lastRoll && (React.createElement("div", { className: "u09-card u09-mono", style: { marginBottom: 16, borderColor: "#3ddc6b", display: "flex", alignItems: "center", gap: 10, fontSize: 13 } },
@@ -712,7 +762,38 @@ function App() {
                                         React.createElement("span", { className: "u09-mono", style: { fontSize: 11, color: "#2e7a44" } }, d.date),
                                         React.createElement("span", { style: { cursor: "pointer", color: "#ff5a4d" }, onClick: () => removeDiaryEntry(d.id) }, "\uD83D\uDDD1")),
                                     React.createElement("div", { style: { fontSize: 13, marginTop: 4, whiteSpace: "pre-wrap" } }, d.text)))),
-                                sheet.diary.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma anota\u00E7\u00E3o ainda."))))))))));
+                                sheet.diary.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma anota\u00E7\u00E3o ainda.")))),
+                    React.createElement("div", { className: "u09-card", style: { marginTop: 20 } },
+                        React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Afilia\u00E7\u00E3o"),
+                        sheet.afiliacaoCode ? (React.createElement("div", { style: { fontSize: 13, color: "#2ec95c" } },
+                            "Conectado \u00E0 afilia\u00E7\u00E3o ",
+                            React.createElement("strong", null, sheet.afiliacaoName || sheet.afiliacaoCode),
+                            " ",
+                            React.createElement("span", { className: "u09-mono", style: { color: "#2e7a44" } },
+                                "(",
+                                sheet.afiliacaoCode,
+                                ")"))) : (React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 11, color: "#2e7a44", lineHeight: 1.6, marginBottom: 8 } }, "> Caso queira adicionar esta ficha eletr\u00F4nica a uma afilia\u00E7\u00E3o, insira o c\u00F3digo abaixo e aperte em \"Juntar-se \u00E0 Afilia\u00E7\u00E3o\"."),
+                            React.createElement("div", { style: { display: "flex", gap: 8 } },
+                                React.createElement("input", { className: "u09-input", style: { flex: 1, textTransform: "uppercase" }, placeholder: "C\u00F3digo da afilia\u00E7\u00E3o", value: afilCode, onChange: (e) => setAfilCode(e.target.value) }),
+                                React.createElement("button", { className: "u09-btn", disabled: afilBusy, onClick: juntarAfiliacao }, "JUNTAR-SE \u00C0 AFILIA\u00C7\u00C3O")),
+                            afilMsg && React.createElement("div", { style: { fontSize: 11, color: "#3ddc6b", marginTop: 6 } },
+                                "> ",
+                                afilMsg)))),
+                    React.createElement("div", { className: "u09-card", style: { marginTop: 16 } },
+                        React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "Ponto de Seguran\u00E7a (recupera\u00E7\u00E3o por e-mail)"),
+                        React.createElement("div", { style: { fontSize: 11, color: "#2e7a44", marginBottom: 8 } }, "> Caso esque\u00E7a a senha ou a palavra-chave, este e-mail \u00E9 usado para recuperar o acesso."),
+                        React.createElement("input", { className: "u09-input", type: "email", style: { width: "100%" }, placeholder: "seuemail@exemplo.com", value: sheet.recoveryEmail || "", onChange: (e) => setSheet((s) => ({ ...s, recoveryEmail: e.target.value })) })),
+                    React.createElement("div", { className: "u09-card", style: { marginTop: 16, borderColor: "#5c2323" } },
+                        React.createElement("div", { className: "u09-label", style: { marginBottom: 8, color: "#ff8f85" } }, "Zona de risco"),
+                        !deleteConfirm ? (React.createElement("button", { className: "u09-btn", style: { borderColor: "#5c2323", color: "#ff8f85" }, onClick: () => setDeleteConfirm(true) }, "\uD83D\uDDD1 DELETAR FICHA ELETR\u00D4NICA")) : (React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 12, color: "#ff5a4d", lineHeight: 1.6, marginBottom: 10 } }, "> ATEN\u00C7\u00C3O: caso voc\u00EA delete esta ficha, ela ser\u00E1 apagada dos arquivos da IRIS COMPANY e nunca mais poder\u00E1 ser recuperada."),
+                            React.createElement("div", { style: { display: "flex", gap: 8 } },
+                                React.createElement("button", { className: "u09-btn", style: { borderColor: "#5c2323", color: "#ff8f85" }, disabled: deleteBusy, onClick: deletarFicha }, "CONFIRMAR EXCLUS\u00C3O DEFINITIVA"),
+                                React.createElement("button", { className: "u09-btn", onClick: () => setDeleteConfirm(false) }, "CANCELAR")),
+                            deleteMsg && React.createElement("div", { style: { fontSize: 11, color: "#ff5a4d", marginTop: 6 } },
+                                "> ",
+                                deleteMsg))))))))));
 }
 function PoolEditor({ label, pool, remaining, onChange }) {
     return (React.createElement("div", { className: "u09-card", style: { padding: "8px 14px", display: "flex", alignItems: "center", gap: 12 } },
@@ -749,7 +830,228 @@ function BodyPart({ label, base, assigned, current, onMax, onCur }) {
                 React.createElement("span", { className: "u09-mono" }, current),
                 React.createElement("div", { className: "u09-stepper", style: { width: 16, height: 16 }, onClick: () => onCur(1) }, "+")))));
 }
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
+function Screen({ children, maxWidth }) {
+    return (React.createElement("div", { style: { minHeight: "100vh", color: "#33ff66", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative" } },
+        React.createElement(MatrixRain, null),
+        React.createElement("div", { style: { position: "relative", zIndex: 1, width: "100%", maxWidth: maxWidth || 480, border: "1px solid #1a3a1a", background: "rgba(5,15,5,0.88)", padding: 30 } }, children)));
+}
+function ScreenHeader({ title }) {
+    return (React.createElement("div", { style: { textAlign: "center", marginBottom: 18 } },
+        React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.3em", color: "#3ddc6b" } }, "IRIS COMPANY"),
+        React.createElement("div", { style: { fontSize: 10, letterSpacing: "0.15em", color: "#1a6b32", marginTop: 2 } }, title)));
+}
+function Home({ onGo }) {
+    return (React.createElement(Screen, null,
+        React.createElement(ScreenHeader, { title: "SISTEMA OPERACIONAL \u2014 TERMINAL PRINCIPAL" }),
+        React.createElement("div", { style: { borderTop: "1px solid #1a3a1a", borderBottom: "1px solid #1a3a1a", padding: "12px 0", marginBottom: 20, fontSize: 12, lineHeight: 1.6, color: "#2ec95c", textAlign: "center" } }, "> Selecione uma opera\u00E7\u00E3o."),
+        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+            React.createElement("button", { style: termBtn, onClick: () => onGo("ficha") }, "ACESSAR FICHA ELETR\u00D4NICA"),
+            React.createElement("button", { style: termBtn, onClick: () => onGo("afiliacao-ver") }, "VISUALIZAR AFILIA\u00C7\u00C3O"),
+            React.createElement("button", { style: termBtn, onClick: () => onGo("afiliacao-criar") }, "CRIAR AFILIA\u00C7\u00C3O"),
+            React.createElement("button", { style: { ...termBtn, borderColor: "#235c2f" }, onClick: () => onGo("recuperar") }, "RECUPERA\u00C7\u00C3O DE DADOS (PONTO DE SEGURAN\u00C7A)"))));
+}
+function AfiliacaoCriar({ onBack }) {
+    const [name, setName] = useState("");
+    const [quote, setQuote] = useState("");
+    const [bannerUrl, setBannerUrl] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState("");
+    const [result, setResult] = useState(null);
+    async function criar(e) {
+        e.preventDefault();
+        if (!name.trim()) {
+            setMsg("Informe um nome para a afiliação.");
+            return;
+        }
+        setBusy(true);
+        setMsg("REGISTRANDO…");
+        const { ok, data } = await apiCall("/api/afiliacao/criar", { name, quote, bannerUrl });
+        if (ok) {
+            setResult(data);
+            setMsg("");
+        }
+        else {
+            setMsg(data.erro || "Falha ao criar.");
+        }
+        setBusy(false);
+    }
+    if (result) {
+        return (React.createElement(Screen, null,
+            React.createElement(ScreenHeader, { title: "AFILIA\u00C7\u00C3O REGISTRADA" }),
+            React.createElement("div", { style: { textAlign: "center" } },
+                React.createElement("div", { style: { fontSize: 13, color: "#2ec95c", marginBottom: 10 } }, result.name),
+                React.createElement("div", { className: "u09-label", style: { marginBottom: 6 } }, "C\u00F3digo da afilia\u00E7\u00E3o"),
+                React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 32, fontWeight: 700, letterSpacing: "0.2em", marginBottom: 16 } }, result.code),
+                React.createElement("div", { style: { fontSize: 12, color: "#2e7a44", marginBottom: 20 } }, "Compartilhe esse c\u00F3digo com o mestre e os jogadores \u2014 cada um usa ele na pr\u00F3pria ficha, em \"Juntar-se \u00E0 Afilia\u00E7\u00E3o\"."),
+                React.createElement("button", { style: termBtn, onClick: onBack }, "VOLTAR AO IN\u00CDCIO"))));
+    }
+    return (React.createElement(Screen, null,
+        React.createElement(ScreenHeader, { title: "CRIAR NOVA AFILIA\u00C7\u00C3O" }),
+        React.createElement("form", { onSubmit: criar, style: { display: "flex", flexDirection: "column", gap: 12 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "NOME DA AFILIA\u00C7\u00C3O"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: name, onChange: (e) => setName(e.target.value) })),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "FRASE / LEMA (opcional)"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: quote, onChange: (e) => setQuote(e.target.value) })),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "URL DO BANNER (opcional)"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: bannerUrl, onChange: (e) => setBannerUrl(e.target.value), placeholder: "https://\u2026" })),
+            React.createElement("button", { type: "submit", disabled: busy, style: termBtn }, busy ? "PROCESSANDO…" : "CRIAR AFILIAÇÃO")),
+        msg && React.createElement("div", { style: { marginTop: 12, fontSize: 12, color: "#ff5a4d" } },
+            "> ",
+            msg),
+        React.createElement("button", { onClick: onBack, style: { ...termBtn, marginTop: 14, background: "transparent", width: "100%", justifyContent: "center" } }, "VOLTAR")));
+}
+function AfiliacaoVer({ onBack, onGoFicha }) {
+    const [code, setCode] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState("");
+    const [afil, setAfil] = useState(null);
+    async function buscar(e) {
+        e.preventDefault();
+        if (!code.trim())
+            return;
+        setBusy(true);
+        setMsg("BUSCANDO…");
+        const { ok, data } = await apiGet(`/api/afiliacao/${encodeURIComponent(code.trim())}`);
+        if (ok) {
+            setAfil(data);
+            setMsg("");
+        }
+        else {
+            setMsg(data.erro || "Afiliação não encontrada.");
+            setAfil(null);
+        }
+        setBusy(false);
+    }
+    if (afil) {
+        return (React.createElement("div", { style: { minHeight: "100vh", color: "#dbe4ea", position: "relative", padding: "30px 20px" } },
+            React.createElement(MatrixRain, null),
+            React.createElement("div", { style: { position: "relative", zIndex: 1, maxWidth: 980, margin: "0 auto" } },
+                React.createElement("div", { className: "u09-card", style: { display: "flex", gap: 20, alignItems: "center", marginBottom: 24, flexWrap: "wrap" } },
+                    afil.bannerUrl && React.createElement("img", { src: afil.bannerUrl, alt: "banner", style: { width: 140, height: 100, objectFit: "cover", border: "1px solid #235c2f", filter: "grayscale(30%) sepia(15%) hue-rotate(60deg)" } }),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 22, fontWeight: 700 }, className: "u09-glow" }, afil.name),
+                        afil.quote && React.createElement("div", { style: { fontSize: 13, color: "#2e7a44", marginTop: 4 } },
+                            "\"",
+                            afil.quote,
+                            "\""),
+                        React.createElement("div", { className: "u09-mono", style: { fontSize: 11, color: "#2e7a44", marginTop: 6 } },
+                            "C\u00D3DIGO: ",
+                            afil.code))),
+                React.createElement("div", { className: "u09-label", style: { marginBottom: 10 } },
+                    "Membros (",
+                    afil.membros.length,
+                    ")"),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 14 } },
+                    afil.membros.map((m, i) => (React.createElement("div", { key: i, className: "u09-card", style: { display: "flex", gap: 10 } },
+                        React.createElement("div", { style: { width: 56, height: 56, background: "#0a160a", border: "1px solid #235c2f", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" } }, m.avatarUrl ? React.createElement("img", { src: m.avatarUrl, alt: "", style: { width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(40%) sepia(20%) hue-rotate(60deg)" } }) : React.createElement("span", { style: { color: "#235c2f" } }, "\u25C8")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontWeight: 600, fontSize: 13 } }, m.charName),
+                            React.createElement("div", { style: { fontSize: 11, color: "#2e7a44" } },
+                                m.funcao || "Sem função",
+                                " \u00B7 Trajet\u00F3ria ",
+                                m.trajetoria))))),
+                    afil.membros.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhum membro ainda.")),
+                React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 24 } },
+                    React.createElement("button", { style: termBtn, onClick: onGoFicha }, "ACESSAR MINHA FICHA"),
+                    React.createElement("button", { style: { ...termBtn, background: "transparent" }, onClick: onBack }, "VOLTAR AO IN\u00CDCIO")))));
+    }
+    return (React.createElement(Screen, null,
+        React.createElement(ScreenHeader, { title: "VISUALIZAR AFILIA\u00C7\u00C3O" }),
+        React.createElement("form", { onSubmit: buscar, style: { display: "flex", flexDirection: "column", gap: 12 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "C\u00D3DIGO DA AFILIA\u00C7\u00C3O"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 18, padding: "10px 12px", textTransform: "uppercase" }, value: code, onChange: (e) => setCode(e.target.value) })),
+            React.createElement("button", { type: "submit", disabled: busy, style: termBtn }, busy ? "BUSCANDO…" : "VISUALIZAR")),
+        msg && React.createElement("div", { style: { marginTop: 12, fontSize: 12, color: "#ff5a4d" } },
+            "> ",
+            msg),
+        React.createElement("button", { onClick: onBack, style: { ...termBtn, marginTop: 14, background: "transparent", width: "100%", justifyContent: "center" } }, "VOLTAR")));
+}
+function Recuperar({ onBack }) {
+    const [email, setEmail] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [sent, setSent] = useState(false);
+    async function pedir(e) {
+        e.preventDefault();
+        if (!email.trim())
+            return;
+        setBusy(true);
+        await apiCall("/api/recuperar", { email });
+        setBusy(false);
+        setSent(true);
+    }
+    return (React.createElement(Screen, null,
+        React.createElement(ScreenHeader, { title: "RECUPERA\u00C7\u00C3O DE DADOS \u2014 PONTO DE SEGURAN\u00C7A" }),
+        sent ? (React.createElement("div", { style: { fontSize: 12, color: "#2ec95c", lineHeight: 1.6 } },
+            "> Se houver personagens conectados a esse e-mail, um c\u00F3digo de redefini\u00E7\u00E3o foi enviado para cada um. Confira sua caixa de entrada.",
+            React.createElement("div", { style: { marginTop: 16 } },
+                React.createElement("button", { style: termBtn, onClick: () => onBack("redefinir") }, "J\u00C1 TENHO UM C\u00D3DIGO \u2014 REDEFINIR SENHA")))) : (React.createElement("form", { onSubmit: pedir, style: { display: "flex", flexDirection: "column", gap: 12 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "E-MAIL DE RECUPERA\u00C7\u00C3O"),
+                React.createElement("input", { className: "u09-input", type: "email", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: email, onChange: (e) => setEmail(e.target.value) })),
+            React.createElement("button", { type: "submit", disabled: busy, style: termBtn }, busy ? "ENVIANDO…" : "ENVIAR CÓDIGO"))),
+        React.createElement("button", { onClick: () => onBack("home"), style: { ...termBtn, marginTop: 14, background: "transparent", width: "100%", justifyContent: "center" } }, "VOLTAR")));
+}
+function Redefinir({ onBack }) {
+    const [keyword, setKeyword] = useState("");
+    const [token, setToken] = useState("");
+    const [novaSenha, setNovaSenha] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState("");
+    const [done, setDone] = useState(false);
+    async function redefinir(e) {
+        e.preventDefault();
+        setBusy(true);
+        setMsg("PROCESSANDO…");
+        const { ok, data } = await apiCall("/api/redefinir-senha", { keyword, token, novaSenha });
+        if (ok) {
+            setDone(true);
+            setMsg("");
+        }
+        else {
+            setMsg(data.erro || "Não foi possível redefinir.");
+        }
+        setBusy(false);
+    }
+    return (React.createElement(Screen, null,
+        React.createElement(ScreenHeader, { title: "REDEFINIR SENHA" }),
+        done ? (React.createElement("div", { style: { fontSize: 12, color: "#2ec95c", lineHeight: 1.6 } },
+            "> Senha redefinida com sucesso.",
+            React.createElement("div", { style: { marginTop: 16 } },
+                React.createElement("button", { style: termBtn, onClick: () => onBack("ficha") }, "IR PARA O LOGIN")))) : (React.createElement("form", { onSubmit: redefinir, style: { display: "flex", flexDirection: "column", gap: 12 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "PALAVRA-CHAVE DO PERSONAGEM"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: keyword, onChange: (e) => setKeyword(e.target.value) })),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "C\u00D3DIGO RECEBIDO POR E-MAIL"),
+                React.createElement("input", { className: "u09-input", style: { width: "100%", fontSize: 16, padding: "10px 12px", textTransform: "uppercase" }, value: token, onChange: (e) => setToken(e.target.value) })),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.1em", marginBottom: 4, color: "#2ec95c" } }, "NOVA SENHA"),
+                React.createElement("input", { className: "u09-input", type: "password", style: { width: "100%", fontSize: 16, padding: "10px 12px" }, value: novaSenha, onChange: (e) => setNovaSenha(e.target.value) })),
+            React.createElement("button", { type: "submit", disabled: busy, style: termBtn }, busy ? "PROCESSANDO…" : "REDEFINIR SENHA"))),
+        msg && React.createElement("div", { style: { marginTop: 12, fontSize: 12, color: "#ff5a4d" } },
+            "> ",
+            msg),
+        React.createElement("button", { onClick: () => onBack("home"), style: { ...termBtn, marginTop: 14, background: "transparent", width: "100%", justifyContent: "center" } }, "VOLTAR AO IN\u00CDCIO")));
+}
+function Root() {
+    const [mode, setMode] = useState("home");
+    if (mode === "ficha")
+        return React.createElement(App, { onHome: () => setMode("home") });
+    if (mode === "afiliacao-criar")
+        return React.createElement(AfiliacaoCriar, { onBack: () => setMode("home") });
+    if (mode === "afiliacao-ver")
+        return React.createElement(AfiliacaoVer, { onBack: () => setMode("home"), onGoFicha: () => setMode("ficha") });
+    if (mode === "recuperar")
+        return React.createElement(Recuperar, { onBack: (next) => setMode(next) });
+    if (mode === "redefinir")
+        return React.createElement(Redefinir, { onBack: (next) => setMode(next) });
+    return React.createElement(Home, { onGo: setMode });
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(Root, null));
 </script>
 </body>
 </html>
