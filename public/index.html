@@ -1210,21 +1210,37 @@ function Redefinir({ onBack }) {
 function Root() {
     const [mode, setMode] = useState("home");
     const [afilCodeToView, setAfilCodeToView] = useState("");
-    function goAfiliacao(code) {
-        setAfilCodeToView(code);
-        setMode("afiliacao-ver");
+    const [transitioning, setTransitioning] = useState(false);
+    const pendingRef = useRef(null);
+    function navigate(newMode, code) {
+        pendingRef.current = { newMode, code };
+        setTransitioning(true);
     }
+    function finishNavigate() {
+        const p = pendingRef.current;
+        if (p) {
+            setMode(p.newMode);
+            setAfilCodeToView(p.code || "");
+        }
+        setTransitioning(false);
+    }
+    function goAfiliacao(code) { navigate("afiliacao-ver", code); }
+    let screen;
     if (mode === "ficha")
-        return React.createElement(App, { onHome: () => setMode("home"), onGoAfiliacao: goAfiliacao });
-    if (mode === "afiliacao-criar")
-        return React.createElement(AfiliacaoCriar, { onBack: () => setMode("home") });
-    if (mode === "afiliacao-ver")
-        return React.createElement(AfiliacaoVer, { onBack: () => setMode("home"), onGoFicha: () => setMode("ficha"), initialCode: afilCodeToView });
-    if (mode === "recuperar")
-        return React.createElement(Recuperar, { onBack: (next) => setMode(next) });
-    if (mode === "redefinir")
-        return React.createElement(Redefinir, { onBack: (next) => setMode(next) });
-    return React.createElement(Home, { onGo: setMode });
+        screen = React.createElement(App, { onHome: () => navigate("home"), onGoAfiliacao: goAfiliacao });
+    else if (mode === "afiliacao-criar")
+        screen = React.createElement(AfiliacaoCriar, { onBack: () => navigate("home") });
+    else if (mode === "afiliacao-ver")
+        screen = React.createElement(AfiliacaoVer, { onBack: () => navigate("home"), onGoFicha: () => navigate("ficha"), initialCode: afilCodeToView });
+    else if (mode === "recuperar")
+        screen = React.createElement(Recuperar, { onBack: (next) => navigate(next) });
+    else if (mode === "redefinir")
+        screen = React.createElement(Redefinir, { onBack: (next) => navigate(next) });
+    else
+        screen = React.createElement(Home, { onGo: (m) => navigate(m) });
+    return (React.createElement(React.Fragment, null,
+        screen,
+        transitioning && React.createElement(IrisTransition, { onDone: finishNavigate })));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(Root, null));
 </script>
