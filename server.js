@@ -276,20 +276,26 @@ app.post("/api/afiliacao/juntar", async (req, res) => {
 
 // -- recuperação de acesso e exclusão -----------------------------------
 
-async function sendEmail(to, subject, text) {
-  if (!process.env.RESEND_API_KEY) return { ok: false, erro: "E-mail não configurado no servidor." };
-  try {
-    const resp = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM || "IRIS COMPANY <onboarding@resend.dev>",
-        to: [to],
-        subject,
-        text,
-      }),
+const nodemailer = require("nodemailer");
+
+let transporter = null;
+function getTransporter() {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) return null;
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
     });
-    return { ok: resp.ok };
+  }
+  return transporter;
+}
+
+async function sendEmail(to, subject, text) {
+  const t = getTransporter();
+  if (!t) return { ok: false, erro: "E-mail não configurado no servidor." };
+  try {
+    await t.sendMail({ from: `"IRIS COMPANY" <${process.env.GMAIL_USER}>`, to, subject, text });
+    return { ok: true };
   } catch (e) {
     return { ok: false, erro: "Falha ao enviar e-mail." };
   }
