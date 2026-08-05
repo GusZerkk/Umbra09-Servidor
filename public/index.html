@@ -25,6 +25,16 @@
   .u09-label { font-size:10px; letter-spacing:0.15em; color:#2e7a44; text-transform:uppercase; }
   .u09-glow { text-shadow:0 0 6px rgba(61,220,107,0.5); }
   textarea.u09-input { resize:vertical; }
+  @keyframes rainbow-cycle { 0%{color:#ff3355;} 16%{color:#ff9d33;} 33%{color:#f4ff33;} 50%{color:#33ff66;} 66%{color:#33d4ff;} 83%{color:#a366ff;} 100%{color:#ff3355;} }
+  .crit-nat20 { animation: rainbow-cycle 1.1s linear infinite; text-shadow: 0 0 10px currentColor; }
+  @keyframes glitch-flicker {
+    0%,100% { transform: translate(0,0); opacity:1; text-shadow:none; }
+    20% { transform: translate(-2px,1px); opacity:0.85; text-shadow: 2px 0 #ff2b4d, -2px 0 #00e5ff; }
+    40% { transform: translate(2px,-1px); opacity:0.6; text-shadow: -2px 0 #ff2b4d, 2px 0 #00e5ff; }
+    60% { transform: translate(-1px,-1px); opacity:0.9; text-shadow: 2px 0 #ff2b4d, -2px 0 #00e5ff; }
+    80% { transform: translate(1px,2px); opacity:0.7; text-shadow:none; }
+  }
+  .fumble-nat1 { animation: glitch-flicker 0.4s steps(2) infinite; color:#ff2b4d; }
 </style>
 </head>
 <body>
@@ -723,7 +733,9 @@ function App({ onHome, onGoAfiliacao }) {
                             " + ",
                             lastRoll.skillVal,
                             " ="),
-                        React.createElement("span", { className: "u09-glow", style: { fontSize: 18, fontWeight: 700 } }, lastRoll.total))),
+                        React.createElement("span", { className: lastRoll.roll === 20 ? "crit-nat20" : lastRoll.roll === 1 ? "fumble-nat1" : "u09-glow", style: { fontSize: 18, fontWeight: 700 } }, lastRoll.total),
+                        lastRoll.roll === 20 && React.createElement("span", { style: { fontSize: 11, color: "#e8c33d" } }, "NATURAL 20!"),
+                        lastRoll.roll === 1 && React.createElement("span", { style: { fontSize: 11, color: "#ff2b4d" } }, "NATURAL 1\u2026"))),
                     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 } }, ATTRIBUTES.map((a) => (React.createElement("div", { key: a.key, className: "u09-card" },
                         React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
                             React.createElement("div", { style: { fontWeight: 600, letterSpacing: "0.08em", fontSize: 13 } }, a.label),
@@ -1307,7 +1319,7 @@ function AfiliacaoVer({ onBack, onGoFicha, initialCode }) {
                                 r.attr_val,
                                 " + ",
                                 r.skill_val)),
-                        React.createElement("div", { className: "u09-mono u09-glow", style: { fontSize: 20, fontWeight: 700 } }, r.total)))),
+                        React.createElement("div", { className: `u09-mono ${r.dado === 20 ? "crit-nat20" : r.dado === 1 ? "fumble-nat1" : "u09-glow"}`, style: { fontSize: 20, fontWeight: 700 } }, r.total)))),
                     afil.rolagens.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#1a3a1a" } }, "Nenhuma rolagem registrada ainda.")),
                 React.createElement("div", { className: "u09-card", style: { marginBottom: 24 } },
                     React.createElement("div", { className: "u09-label", style: { marginBottom: 8 } }, "\u00C1rea do mestre"),
