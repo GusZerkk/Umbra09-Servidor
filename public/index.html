@@ -166,8 +166,8 @@ function MatrixRain() {
         const fontSize = 15;
         let width, height, columns, drops, animId, frame = 0;
         function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+            width = canvas.width = document.documentElement.clientWidth;
+            height = canvas.height = document.documentElement.clientHeight;
             columns = Math.ceil(width / fontSize);
             drops = Array.from({ length: columns }, () => Math.random() * (height / fontSize));
         }
@@ -204,8 +204,8 @@ function IrisTransition({ onDone }) {
         if (!canvas)
             return undefined;
         const ctx = canvas.getContext("2d");
-        const w = (canvas.width = window.innerWidth);
-        const h = (canvas.height = window.innerHeight);
+        const w = (canvas.width = document.documentElement.clientWidth);
+        const h = (canvas.height = document.documentElement.clientHeight);
         const cx = w / 2, cy = h / 2;
         const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
         const N = 160;
