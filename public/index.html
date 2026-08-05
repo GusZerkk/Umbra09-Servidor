@@ -35,10 +35,6 @@
     80% { transform: translate(1px,2px); opacity:0.7; text-shadow:none; }
   }
   .fumble-nat1 { animation: glitch-flicker 0.4s steps(2) infinite; color:#ff2b4d; }
-  @keyframes star-twinkle-a { 0%,100% { opacity:0.55; } 50% { opacity:0.9; } }
-  @keyframes star-twinkle-b { 0%,100% { opacity:0.35; } 50% { opacity:0.75; } }
-  @keyframes nebula-drift-1 { 0%,100% { transform:translate(0,0) scale(1); } 50% { transform:translate(3%,-2%) scale(1.05); } }
-  @keyframes nebula-drift-2 { 0%,100% { transform:translate(0,0) scale(1); } 50% { transform:translate(-4%,3%) scale(1.08); } }
 </style>
 </head>
 <body>
@@ -160,41 +156,76 @@ async function apiGet(path) {
     return { ok: res.ok, status: res.status, data };
 }
 function MatrixRain() {
-    return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden", background: "#05070a" } },
-        React.createElement("div", { style: {
-                position: "absolute", inset: 0,
-                backgroundImage: "radial-gradient(1px 1px at 14px 26px, rgba(255,255,255,0.9), transparent 100%)," +
-                    "radial-gradient(1px 1px at 52px 88px, rgba(255,255,255,0.75), transparent 100%)," +
-                    "radial-gradient(1px 1px at 97px 14px, rgba(255,255,255,0.85), transparent 100%)," +
-                    "radial-gradient(1px 1px at 133px 120px, rgba(255,255,255,0.7), transparent 100%)," +
-                    "radial-gradient(1px 1px at 70px 150px, rgba(255,255,255,0.8), transparent 100%)," +
-                    "radial-gradient(1px 1px at 20px 110px, rgba(255,255,255,0.65), transparent 100%)," +
-                    "radial-gradient(1px 1px at 150px 60px, rgba(255,255,255,0.9), transparent 100%)," +
-                    "radial-gradient(1px 1px at 110px 45px, rgba(255,255,255,0.7), transparent 100%)",
-                backgroundSize: "160px 160px",
-                animation: "star-twinkle-a 9s ease-in-out infinite",
-            } }),
-        React.createElement("div", { style: {
-                position: "absolute", inset: 0,
-                backgroundImage: "radial-gradient(1.5px 1.5px at 30px 40px, rgba(180,255,200,0.85), transparent 100%)," +
-                    "radial-gradient(1.5px 1.5px at 180px 90px, rgba(255,255,255,0.8), transparent 100%)," +
-                    "radial-gradient(1.5px 1.5px at 90px 200px, rgba(180,255,200,0.7), transparent 100%)," +
-                    "radial-gradient(1.5px 1.5px at 220px 150px, rgba(255,255,255,0.75), transparent 100%)," +
-                    "radial-gradient(1.5px 1.5px at 60px 230px, rgba(255,255,255,0.65), transparent 100%)," +
-                    "radial-gradient(1.5px 1.5px at 200px 20px, rgba(180,255,200,0.8), transparent 100%)",
-                backgroundSize: "260px 260px",
-                animation: "star-twinkle-b 13s ease-in-out infinite",
-            } }),
-        React.createElement("div", { style: {
-                position: "absolute", inset: "-15%",
-                background: "radial-gradient(circle at 30% 35%, rgba(80,220,150,0.10), transparent 45%)",
-                animation: "nebula-drift-1 70s ease-in-out infinite",
-            } }),
-        React.createElement("div", { style: {
-                position: "absolute", inset: "-15%",
-                background: "radial-gradient(circle at 72% 65%, rgba(90,140,255,0.08), transparent 42%)",
-                animation: "nebula-drift-2 90s ease-in-out infinite",
-            } })));
+    const canvasRef = useRef(null);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas)
+            return undefined;
+        const ctx = canvas.getContext("2d");
+        let w, h, cx, cy, maxR, animId;
+        const EVENT_HORIZON = 30;
+        function makeStar(fresh) {
+            return {
+                angle: Math.random() * Math.PI * 2,
+                radius: fresh ? maxR * (0.8 + Math.random() * 0.2) : Math.random() * maxR,
+                size: 0.8 + Math.random() * 1.4,
+                bright: Math.random() > 0.85,
+                tint: Math.random() > 0.6 ? "green" : "white",
+            };
+        }
+        let stars = [];
+        function resize() {
+            w = canvas.width = document.documentElement.clientWidth;
+            h = canvas.height = document.documentElement.clientHeight;
+            cx = w / 2;
+            cy = h / 2;
+            maxR = Math.hypot(w, h) * 0.5;
+            stars = Array.from({ length: 90 }, () => makeStar(false));
+        }
+        resize();
+        window.addEventListener("resize", resize);
+        function draw(ts) {
+            ctx.fillStyle = "#05070a";
+            ctx.fillRect(0, 0, w, h);
+            stars.forEach((s) => {
+                const angularSpeed = 0.0018 * (220 / Math.max(s.radius, 60));
+                s.angle += angularSpeed;
+                s.radius -= 0.16 + (1 - s.radius / maxR) * 0.35;
+                if (s.radius <= EVENT_HORIZON)
+                    Object.assign(s, makeStar(true));
+                const x = cx + Math.cos(s.angle) * s.radius;
+                const y = cy + Math.sin(s.angle) * s.radius * 0.6;
+                const fade = Math.min(1, (s.radius - EVENT_HORIZON) / 40);
+                ctx.beginPath();
+                ctx.fillStyle = s.tint === "green" ? `rgba(120,255,170,${0.55 * fade + (s.bright ? 0.25 : 0)})` : `rgba(255,255,255,${0.55 * fade + (s.bright ? 0.25 : 0)})`;
+                ctx.arc(x, y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            const t = ts / 1000;
+            const glowR = EVENT_HORIZON + 8 + Math.sin(t / 3) * 3;
+            const grad = ctx.createRadialGradient(cx, cy, EVENT_HORIZON * 0.6, cx, cy, glowR + 34);
+            grad.addColorStop(0, "rgba(90,255,150,0.35)");
+            grad.addColorStop(0.5, "rgba(60,200,120,0.14)");
+            grad.addColorStop(1, "rgba(60,200,120,0)");
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(cx, cy, glowR + 34, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#05070a";
+            ctx.beginPath();
+            ctx.arc(cx, cy, EVENT_HORIZON, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "rgba(120,255,170,0.55)";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, EVENT_HORIZON, 0, Math.PI * 2);
+            ctx.stroke();
+            animId = requestAnimationFrame(draw);
+        }
+        animId = requestAnimationFrame(draw);
+        return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
+    }, []);
+    return React.createElement("canvas", { ref: canvasRef, style: { position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "#05070a" } });
 }
 function IrisTransition({ onDone }) {
     const canvasRef = useRef(null);
