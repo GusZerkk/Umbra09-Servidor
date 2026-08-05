@@ -86,7 +86,7 @@ app.post("/api/salvar", async (req, res) => {
 
   const { error: updateError } = await supabase
     .from("fichas")
-    .update({ sheet, afiliacao_code: sheet.afiliacaoCode || null, recovery_email: (sheet.recoveryEmail || "").toLowerCase().trim() || null })
+    .update({ sheet, afiliacao_code: sheet.afiliacaoCode || null })
     .eq("keyword", kw);
   if (updateError) return res.status(500).json({ ok: false, erro: "Erro ao salvar." });
 
@@ -272,77 +272,6 @@ app.post("/api/afiliacao/juntar", async (req, res) => {
   if (updErr) return res.status(500).json({ ok: false, erro: "Erro ao entrar na afiliação." });
 
   return res.json({ ok: true, code: afil.code, name: afil.name });
-});
-
-// -- recuperação de acesso e exclusão -----------------------------------
-
-const nodemailer = require("nodemailer");
-
-let transporter = null;
-function getTransporter() {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) return null;
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-    });
-  }
-  return transporter;
-}
-
-async function sendEmail(to, subject, text) {
-  const t = getTransporter();
-  if (!t) return { ok: false, erro: "E-mail não configurado no servidor." };
-  try {
-    await t.sendMail({ from: `"IRIS COMPANY" <${process.env.GMAIL_USER}>`, to, subject, text });
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, erro: "Falha ao enviar e-mail." };
-  }
-}
-
-// Pede a lista de personagens ligados a um e-mail e manda código de redefinição pra cada um
-app.post("/api/recuperar", async (req, res) => {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ ok: false, erro: "Informe um e-mail." });
-  const emailNorm = email.toLowerCase().trim();
-
-  const { data: fichas } = await supabase.from("fichas").select("keyword").eq("recovery_email", emailNorm);
-  if (fichas && fichas.length) {
-    const linhas = [];
-    for (const f of fichas) {
-      const token = randomCode(8);
-      const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-      await supabase.from("fichas").update({ reset_token: token, reset_token_expires: expires }).eq("keyword", f.keyword);
-      linhas.push(`Personagem "${f.keyword}" — código de redefinição: ${token} (válido por 30 minutos)`);
-    }
-    const texto = `A IRIS COMPANY localizou os seguintes registros conectados a este e-mail:\n\n${linhas.join("\n")}\n\nUse a palavra-chave do personagem junto com o código acima na tela "Redefinir senha" do site para escolher uma senha nova.`;
-    await sendEmail(emailNorm, "IRIS COMPANY — Recuperação de acesso", texto);
-  }
-  // Resposta sempre igual, pra não revelar se o e-mail está ou não cadastrado
-  return res.json({ ok: true });
-});
-
-// Troca a senha de uma ficha usando o código recebido por e-mail
-app.post("/api/redefinir-senha", async (req, res) => {
-  const { keyword, token, novaSenha } = req.body || {};
-  if (!keyword || !token || !novaSenha) return res.status(400).json({ ok: false, erro: "Preencha todos os campos." });
-  const kw = normalizeKeyword(keyword);
-
-  const { data, error } = await supabase.from("fichas").select("reset_token, reset_token_expires").eq("keyword", kw).maybeSingle();
-  if (error || !data) return res.status(404).json({ ok: false, erro: "Arquivo não encontrado." });
-  if (!data.reset_token || data.reset_token !== token.toUpperCase().trim()) {
-    return res.status(401).json({ ok: false, erro: "Código inválido." });
-  }
-  if (!data.reset_token_expires || new Date(data.reset_token_expires) < new Date()) {
-    return res.status(401).json({ ok: false, erro: "Código expirado. Solicite a recuperação novamente." });
-  }
-
-  const passwordHash = await bcrypt.hash(novaSenha, 10);
-  const { error: updErr } = await supabase.from("fichas").update({ password_hash: passwordHash, reset_token: null, reset_token_expires: null }).eq("keyword", kw);
-  if (updErr) return res.status(500).json({ ok: false, erro: "Erro ao redefinir a senha." });
-
-  return res.json({ ok: true });
 });
 
 // Apaga uma ficha em definitivo
