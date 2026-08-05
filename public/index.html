@@ -1162,7 +1162,7 @@ function AfiliacaoVer({ onBack, onGoFicha, initialCode }) {
             const { ok, data } = await apiGet(`/api/afiliacao/${encodeURIComponent(afil.code)}`);
             if (ok)
                 setAfil(data);
-        }, 5000);
+        }, 2000);
         return () => clearInterval(interval);
     }, [afil && afil.code]);
     async function buscarCodigo(c) {
