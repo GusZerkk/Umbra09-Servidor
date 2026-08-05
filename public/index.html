@@ -206,6 +206,29 @@ function MatrixRain() {
             const t = ts / 1000;
             const rot = -0.5;
             const rx = eventHorizon * 3.4, ry = eventHorizon * 0.55;
+            function ellipsePoint(a) {
+                const x0 = rx * Math.cos(a), y0 = ry * Math.sin(a);
+                return { x: cx + x0 * Math.cos(rot) - y0 * Math.sin(rot), y: cy + x0 * Math.sin(rot) + y0 * Math.cos(rot) };
+            }
+            const NUM_BLOBS = 7;
+            const blobs = Array.from({ length: NUM_BLOBS }, (_, i) => {
+                const a = ((t * 0.35) + (i / NUM_BLOBS) * Math.PI * 2) % (Math.PI * 2);
+                const p = ellipsePoint(a);
+                const front = a > Math.PI * 0.15 && a < Math.PI * 0.85;
+                const size = eventHorizon * (0.55 + 0.25 * Math.sin(t * 0.6 + i * 2));
+                return { x: p.x, y: p.y, size, front, seed: i };
+            });
+            function drawBlob(b) {
+                const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.size);
+                const tone = b.seed % 3 === 0 ? "255,255,220" : "130,255,175";
+                g.addColorStop(0, `rgba(${tone},0.55)`);
+                g.addColorStop(0.6, `rgba(${tone},0.18)`);
+                g.addColorStop(1, `rgba(${tone},0)`);
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
             // halo suave ao redor de tudo
             const glowR = eventHorizon + 10 + Math.sin(t / 3) * 4;
             const grad = ctx.createRadialGradient(cx, cy, eventHorizon * 0.6, cx, cy, glowR + eventHorizon * 1.6);
@@ -226,6 +249,8 @@ function MatrixRain() {
             ctx.ellipse(cx, cy, rx, ry, rot, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
+            // turbulência (nuvens girando) que passa atrás do buraco
+            blobs.filter((b) => !b.front).forEach(drawBlob);
             // o buraco em si
             ctx.fillStyle = "#05070a";
             ctx.beginPath();
@@ -251,6 +276,8 @@ function MatrixRain() {
             ctx.ellipse(cx, cy, rx, ry, rot, Math.PI * 0.15, Math.PI * 0.85);
             ctx.stroke();
             ctx.restore();
+            // turbulência que passa na frente do buraco
+            blobs.filter((b) => b.front).forEach(drawBlob);
             animId = requestAnimationFrame(draw);
         }
         animId = requestAnimationFrame(draw);
