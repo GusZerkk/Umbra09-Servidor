@@ -35,6 +35,8 @@
     80% { transform: translate(1px,2px); opacity:0.7; text-shadow:none; }
   }
   .fumble-nat1 { animation: glitch-flicker 0.4s steps(2) infinite; color:#ff2b4d; }
+  @keyframes radar-pulse { 0%,100% { opacity:0.5; transform:scale(0.9); } 50% { opacity:1; transform:scale(1.05); } }
+  @keyframes radar-sweep { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -156,46 +158,23 @@ async function apiGet(path) {
     return { ok: res.ok, status: res.status, data };
 }
 function MatrixRain() {
-    const canvasRef = useRef(null);
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas)
-            return undefined;
-        const ctx = canvas.getContext("2d");
-        const chars = "アイウエオカキクケコサシスセソ0123456789ABCDEF#$%&IRIS09".split("");
-        const fontSize = 15;
-        let width, height, columns, drops, animId, frame = 0;
-        function resize() {
-            width = canvas.width = document.documentElement.clientWidth;
-            height = canvas.height = document.documentElement.clientHeight;
-            columns = Math.ceil(width / fontSize);
-            drops = Array.from({ length: columns }, () => Math.random() * (height / fontSize));
-        }
-        resize();
-        window.addEventListener("resize", resize);
-        function draw() {
-            frame++;
-            if (frame % 7 === 0) {
-                ctx.fillStyle = "rgba(4,6,3,0.09)";
-                ctx.fillRect(0, 0, width, height);
-                ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
-                for (let i = 0; i < columns; i++) {
-                    const char = chars[Math.floor(Math.random() * chars.length)];
-                    const y = drops[i] * fontSize;
-                    ctx.fillStyle = Math.random() > 0.96 ? "#c8ffd9" : "#1f9b45";
-                    ctx.fillText(char, i * fontSize, y);
-                    if (y > height && Math.random() > 0.985)
-                        drops[i] = 0;
-                    else
-                        drops[i] += 1;
-                }
-            }
-            animId = requestAnimationFrame(draw);
-        }
-        draw();
-        return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", resize); };
-    }, []);
-    return React.createElement("canvas", { ref: canvasRef, style: { position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", background: "#040603" } });
+    return (React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden", background: "#040603" } },
+        React.createElement("div", { style: {
+                position: "absolute", inset: 0,
+                backgroundImage: "repeating-linear-gradient(0deg, rgba(61,220,107,0.05) 0px, rgba(61,220,107,0.05) 1px, transparent 1px, transparent 48px)," +
+                    "repeating-linear-gradient(90deg, rgba(61,220,107,0.05) 0px, rgba(61,220,107,0.05) 1px, transparent 1px, transparent 48px)",
+            } }),
+        React.createElement("div", { style: {
+                position: "absolute", inset: 0,
+                background: "radial-gradient(circle at center, rgba(61,220,107,0.14) 0%, rgba(61,220,107,0.05) 35%, transparent 68%)",
+                animation: "radar-pulse 7s ease-in-out infinite",
+            } }),
+        React.createElement("div", { style: {
+                position: "absolute", inset: 0,
+                background: "conic-gradient(from 0deg, rgba(61,220,107,0.09), transparent 16%, transparent 100%)",
+                animation: "radar-sweep 50s linear infinite",
+                mixBlendMode: "screen",
+            } })));
 }
 function IrisTransition({ onDone }) {
     const canvasRef = useRef(null);
