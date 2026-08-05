@@ -236,6 +236,8 @@ function IrisTransition({ onDone }) {
             ctx.stroke();
             ctx.restore();
             ctx.font = "16px 'Share Tech Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
             particles.forEach((p) => {
                 p.angle += p.speed * (1 + t * 9);
                 p.radius *= 1 - (0.006 + t * 0.028);
