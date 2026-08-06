@@ -205,24 +205,25 @@ function MatrixRain() {
             });
             const t = ts / 1000;
             const rot = -0.5;
-            const rx = eventHorizon * 3.4, ry = eventHorizon * 0.55;
+            const rx = eventHorizon * 3.1, ry = eventHorizon * 0.85;
             function ellipsePoint(a) {
                 const x0 = rx * Math.cos(a), y0 = ry * Math.sin(a);
                 return { x: cx + x0 * Math.cos(rot) - y0 * Math.sin(rot), y: cy + x0 * Math.sin(rot) + y0 * Math.cos(rot) };
             }
-            const NUM_BLOBS = 7;
+            const NUM_BLOBS = 48;
+            const baseAngle = t * 0.12;
             const blobs = Array.from({ length: NUM_BLOBS }, (_, i) => {
-                const a = ((t * 0.35) + (i / NUM_BLOBS) * Math.PI * 2) % (Math.PI * 2);
+                const a = (baseAngle + (i / NUM_BLOBS) * Math.PI * 2) % (Math.PI * 2);
                 const p = ellipsePoint(a);
-                const front = a > Math.PI * 0.15 && a < Math.PI * 0.85;
-                const size = eventHorizon * (0.55 + 0.25 * Math.sin(t * 0.6 + i * 2));
+                const front = a > Math.PI * 0.12 && a < Math.PI * 0.88;
+                const size = eventHorizon * (0.62 + 0.18 * Math.sin(t * 0.8 + i * 1.7));
                 return { x: p.x, y: p.y, size, front, seed: i };
             });
             function drawBlob(b) {
                 const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.size);
                 const tone = b.seed % 3 === 0 ? "255,255,220" : "130,255,175";
-                g.addColorStop(0, `rgba(${tone},0.55)`);
-                g.addColorStop(0.6, `rgba(${tone},0.18)`);
+                g.addColorStop(0, `rgba(${tone},0.6)`);
+                g.addColorStop(0.55, `rgba(${tone},0.28)`);
                 g.addColorStop(1, `rgba(${tone},0)`);
                 ctx.fillStyle = g;
                 ctx.beginPath();
@@ -231,25 +232,25 @@ function MatrixRain() {
             }
             // halo suave ao redor de tudo
             const glowR = eventHorizon + 10 + Math.sin(t / 3) * 4;
-            const grad = ctx.createRadialGradient(cx, cy, eventHorizon * 0.6, cx, cy, glowR + eventHorizon * 1.6);
-            grad.addColorStop(0, "rgba(90,255,150,0.30)");
-            grad.addColorStop(0.5, "rgba(60,200,120,0.12)");
+            const grad = ctx.createRadialGradient(cx, cy, eventHorizon * 0.6, cx, cy, glowR + eventHorizon * 1.9);
+            grad.addColorStop(0, "rgba(90,255,150,0.32)");
+            grad.addColorStop(0.5, "rgba(60,200,120,0.13)");
             grad.addColorStop(1, "rgba(60,200,120,0)");
             ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(cx, cy, glowR + eventHorizon * 1.6, 0, Math.PI * 2);
+            ctx.arc(cx, cy, glowR + eventHorizon * 1.9, 0, Math.PI * 2);
             ctx.fill();
-            // disco de acreção (anel inteiro, atrás do buraco)
+            // base espessa do disco (atrás do buraco) — fecha o espaço vazio
             ctx.save();
-            ctx.strokeStyle = "rgba(110,255,165,0.4)";
-            ctx.lineWidth = eventHorizon * 0.32;
+            ctx.strokeStyle = "rgba(110,255,165,0.5)";
+            ctx.lineWidth = eventHorizon * 1.1;
             ctx.shadowColor = "#5aff9a";
-            ctx.shadowBlur = 26;
+            ctx.shadowBlur = 30;
             ctx.beginPath();
             ctx.ellipse(cx, cy, rx, ry, rot, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
-            // turbulência (nuvens girando) que passa atrás do buraco
+            // turbulência densa (nuvens girando) que passa atrás do buraco
             blobs.filter((b) => !b.front).forEach(drawBlob);
             // o buraco em si
             ctx.fillStyle = "#05070a";
@@ -266,16 +267,18 @@ function MatrixRain() {
             ctx.arc(cx, cy, eventHorizon + 3, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
-            // parte do disco que cruza na frente
+            // base espessa do disco que cruza na frente
             ctx.save();
-            ctx.strokeStyle = "rgba(200,255,220,0.9)";
-            ctx.lineWidth = eventHorizon * 0.26;
+            ctx.strokeStyle = "rgba(180,255,210,0.65)";
+            ctx.lineWidth = eventHorizon * 0.85;
             ctx.shadowColor = "#a8ffcf";
-            ctx.shadowBlur = 22;
+            ctx.shadowBlur = 26;
             ctx.beginPath();
-            ctx.ellipse(cx, cy, rx, ry, rot, Math.PI * 0.15, Math.PI * 0.85);
+            ctx.ellipse(cx, cy, rx, ry, rot, Math.PI * 0.12, Math.PI * 0.88);
             ctx.stroke();
             ctx.restore();
+            // turbulência densa que passa na frente do buraco
+            blobs.filter((b) => b.front).forEach(drawBlob);
             // turbulência que passa na frente do buraco
             blobs.filter((b) => b.front).forEach(drawBlob);
             animId = requestAnimationFrame(draw);
