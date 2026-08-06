@@ -267,6 +267,22 @@ function MatrixRain() {
             ctx.arc(cx, cy, eventHorizon + 3, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
+            // auréola de luz colada no contorno do buraco (efeito de lente gravitacional, dá a volta inteira)
+            const HALO_BLOBS = 30;
+            for (let i = 0; i < HALO_BLOBS; i++) {
+                const a = (i / HALO_BLOBS) * Math.PI * 2 + t * 0.06;
+                const hr = eventHorizon + 4 + Math.sin(t * 0.9 + i * 1.3) * 2;
+                const hx = cx + Math.cos(a) * hr, hy = cy + Math.sin(a) * hr;
+                const hs = eventHorizon * (0.22 + 0.08 * Math.sin(t * 1.1 + i));
+                const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, hs);
+                hg.addColorStop(0, "rgba(190,255,220,0.65)");
+                hg.addColorStop(0.6, "rgba(120,255,175,0.22)");
+                hg.addColorStop(1, "rgba(120,255,175,0)");
+                ctx.fillStyle = hg;
+                ctx.beginPath();
+                ctx.arc(hx, hy, hs, 0, Math.PI * 2);
+                ctx.fill();
+            }
             // base espessa do disco que cruza na frente
             ctx.save();
             ctx.strokeStyle = "rgba(180,255,210,0.65)";
