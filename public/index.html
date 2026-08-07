@@ -253,10 +253,6 @@ function MatrixRain() {
             ringLayer(fA, fB, 1.3, 30, "rgba(90,255,170,0.5)");
             ringLayer(fA, fB, 0.8, 20, "rgba(150,255,200,0.75)");
             ringLayer(fA, fB, 0.34, 12, "rgba(225,255,235,0.95)");
-            // turbulência densa que passa na frente do buraco
-            blobs.filter((b) => b.front).forEach(drawBlob);
-            // turbulência que passa na frente do buraco
-            blobs.filter((b) => b.front).forEach(drawBlob);
             animId = requestAnimationFrame(draw);
         }
         animId = requestAnimationFrame(draw);
